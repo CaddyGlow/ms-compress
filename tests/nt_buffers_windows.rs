@@ -110,7 +110,8 @@ fn rust_and_ntdll_buffers_interoperate() {
                     assert!(
                         encoded.len() >= input.len(),
                         "native XPRESS refused a compressible input: size={size}, encoded={}, capacity={}, written={written}",
-                        encoded.len(), native.len(),
+                        encoded.len(),
+                        native.len(),
                     );
                     continue;
                 }
