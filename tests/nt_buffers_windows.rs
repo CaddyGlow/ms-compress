@@ -81,7 +81,8 @@ fn rust_and_ntdll_buffers_interoperate() {
                 assert_eq!(status, 0, "format={format} size={size} Rust -> Windows");
                 assert_eq!(written as usize, size);
                 assert_eq!(output, input);
-                let mut native = vec![0; size * 2 + 4096];
+                // Give the native compressor ample block capacity even for short inputs.
+                let mut native = vec![0; size * 2 + 65536];
                 // SAFETY: Workspace has the requested size and alignment; input
                 // and output buffers are live, sized correctly, and disjoint.
                 let status = unsafe {
