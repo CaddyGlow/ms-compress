@@ -54,6 +54,7 @@ fn rust_and_ntdll_buffers_interoperate() {
                 .collect();
             for input in [
                 vec![b'a'; size],
+                vec![0; size],
                 random,
                 (0..size).map(|i| (i % 17) as u8).collect(),
             ] {
@@ -95,6 +96,13 @@ fn rust_and_ntdll_buffers_interoperate() {
                         workspace.as_mut_ptr().cast(),
                     )
                 };
+                // STATUS_BUFFER_ALL_ZEROS is an informational success: the
+                // filesystem may represent this result as a sparse zero unit
+                // instead of a compressed stream. Verify that exact contract.
+                if status == 0x117 {
+                    assert!(input.iter().all(|&byte| byte == 0));
+                    continue;
+                }
                 assert_eq!(status, 0, "format={format} size={size} Windows -> Rust");
                 native.truncate(written as usize);
                 output.fill(0);
