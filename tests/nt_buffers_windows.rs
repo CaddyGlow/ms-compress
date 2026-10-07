@@ -42,6 +42,7 @@ fn rust_and_ntdll_buffers_interoperate() {
         );
         // u64 storage supplies workspace alignment as well as sufficient bytes.
         let mut workspace = vec![0u64; (compress_size as usize).div_ceil(8)];
+        let mut native_decoded = 0;
         for size in [1, 3, 32, 280, 4095, 4096, 4097, 8192, 65539, 100000] {
             let mut seed = 0xabcdef01u32;
             let random: Vec<_> = (0..size)
@@ -126,7 +127,12 @@ fn rust_and_ntdll_buffers_interoperate() {
                 .unwrap();
                 assert_eq!(written, size);
                 assert_eq!(output, input);
+                native_decoded += 1;
             }
         }
+        assert!(
+            native_decoded > 0,
+            "no native compression streams verified for format={format}"
+        );
     }
 }
