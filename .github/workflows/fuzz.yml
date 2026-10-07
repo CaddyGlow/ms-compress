@@ -1,0 +1,47 @@
+name: Compression fuzz
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '31 3 * * 1'
+permissions:
+  contents: read
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@1.99.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: fuzz
+          workspaces: |
+            . -> target
+            fuzz -> target
+      - name: Install native fuzz dependencies and runner
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential binutils-dev libunwind-dev liblzma-dev
+          cargo install honggfuzz --version 0.5.62 --locked
+      - name: Seed codec corpora
+        run: cargo run --manifest-path fuzz/Cargo.toml --locked --bin seed-codecs -- fuzz/corpus/decompress
+      - name: Instrumented decoder and roundtrip smoke campaigns
+        working-directory: fuzz
+        env:
+          HFUZZ_BUILD_ARGS: '--locked'
+          HFUZZ_RUN_ARGS: '-n 1 -t 5 -N 1000 --exit_upon_crash'
+          RUSTC_WRAPPER: ''
+          CARGO_INCREMENTAL: '0'
+          CC: gcc
+        run: |
+          export CARGO_TARGET_DIR="$GITHUB_WORKSPACE/target/ms-compress-honggfuzz"
+          export HFUZZ_WORKSPACE="$GITHUB_WORKSPACE/target/ms-compress-hfuzz-workspace"
+          HFUZZ_INPUT=corpus/decompress cargo hfuzz run decompress
+          HFUZZ_INPUT=corpus/roundtrip cargo hfuzz run roundtrip
+      - name: Preserve fuzz crash evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ms-compress-fuzz-findings
+          path: target/ms-compress-hfuzz-workspace
+

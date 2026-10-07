@@ -1,0 +1,27 @@
+{
+  "upstream_revision": "cd5e231c348c255ae5088873b5a66ee0eb96fa07",
+  "codec": "LZX (2)",
+  "window_orders": [
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21
+  ],
+  "levels": [
+    1,
+    50
+  ],
+  "seed": "0x4C5A584E4154495645",
+  "case_count": 3355,
+  "successful": 637,
+  "rejected": 2718,
+  "encoder_first_block_types": {
+    "1": 156,
+    "2": 4
+  },
+  "fixture_sha256": "eefbc7b876d3f04b2c323f764c1e424be780ab721fedf48387b3b887c32e0e4a",
+  "corpus_sha256": "27dabc0fc86c53e8b5407d9264e1be23a335a0b8a09b096838307fefebb78c8b"
+}

@@ -1,0 +1,5 @@
+/target/
+/dist/
+/.direnv/
+/.envrc
+__pycache__/

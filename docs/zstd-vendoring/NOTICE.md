@@ -1,0 +1,7 @@
+# Attribution and validation scope
+
+The Zstandard implementation is adapted from **ruzstd 0.9.0**, authored by **Moritz Borcherding**, https://github.com/KillingSpark/zstd-rs. Sources were copied from the locally cached crates.io package release. The original **MIT license** is preserved verbatim in `LICENSE-MIT` (SHA256 `d715eb0d9cfe1cc0cc22577e387436aa568b31ca272a7c837004dc0cdde925b5`). `UPSTREAM-SHA256.json` records every original source/package file hash before adaptation. `UPSTREAM-README.md` preserves the upstream README.
+
+Local adaptations: module paths use `ms_compress::zstd`; XXH64 checksum support is dependency-free and always enabled; unsafe ring storage was replaced by checked `alloc::collections::VecDeque`; retained-output copying keeps the negotiated match window while hashing each newly emitted byte exactly once. Original corpus test sources remain present but are disconnected from the module; selected integration tests use separately generated reference fixtures. Optional dictionary-training and upstream fuzz-export features are not exposed. No normal dependency was added.
+
+`tests/fixtures/generate_zstd.py` generates the reference frames using **libzstd 1.5.7**; `tests/fixtures/zstd-oracle.json` records compressed/uncompressed hashes and sizes. Fixtures cover early output, history across blocks, checksum flags, raw dictionaries, and repeated initialization. These are external-codec interoperability checks, not Windows/Defender equivalence evidence.

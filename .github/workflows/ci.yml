@@ -1,0 +1,92 @@
+name: ms-compress CI
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**/*.md', 'docs/**']
+  pull_request:
+    paths-ignore: ['**/*.md', 'docs/**']
+  workflow_call:
+concurrency:
+  group: ${{ github.workflow }}-checks-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+permissions:
+  contents: read
+defaults:
+  run:
+    working-directory: ms-compress
+jobs:
+  codecs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: ms-compress
+      - uses: dtolnay/rust-toolchain@1.99.0
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: validation
+          workspaces: |
+            ms-compress -> target
+            ms-compress/fuzz -> target
+      - run: cargo fmt -p ms-compress -- --check
+      - run: cargo test -p ms-compress --all-features --locked
+      - run: cargo test -p ms-compress --no-default-features --features avx512,lsx,lzma-optimization --locked
+      - run: cargo clippy -p ms-compress --all-targets --all-features --locked -- -D warnings
+      - run: cargo clippy -p ms-compress --all-targets --no-default-features --features avx512,lsx,lzma-optimization --locked -- -D warnings
+      - run: cargo test --no-default-features --locked
+      - name: LZMA safe implementation
+        run: cargo test -p ms-compress --no-default-features --locked --test lzma
+      - name: Native CPU optimized tests
+        if: runner.os == 'Linux'
+        env:
+          RUSTFLAGS: '-C target-cpu=native'
+        run: cargo test -p ms-compress --all-features --locked --lib
+      - name: LZMA reference interoperability
+        if: runner.os == 'Linux'
+        run: cargo test -p ms-compress --all-features --locked --test lzma -- --ignored
+      - name: Release benchmark smoke
+        if: runner.os == 'Linux'
+        env:
+          MS_COMPRESS_BENCH_MS: '10'
+        run: cargo bench -p ms-compress --locked --bench codecs
+      - name: Fuzz harness regression tests
+        if: runner.os == 'Linux'
+        run: cargo test --manifest-path fuzz/Cargo.toml --locked
+
+  no-std:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: ms-compress
+      - uses: dtolnay/rust-toolchain@1.99.0
+        with:
+          targets: thumbv7em-none-eabi
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: validation
+          workspaces: |
+            ms-compress -> target
+            ms-compress/fuzz -> target
+      - run: cargo check -p ms-compress --lib --no-default-features --features avx512,lsx,lzma-optimization --target thumbv7em-none-eabi --locked
+
+
+  windows:
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: ms-compress
+      - uses: dtolnay/rust-toolchain@1.99.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: validation
+          workspaces: |
+            ms-compress -> target
+            ms-compress/fuzz -> target
+      - run: cargo test --all-features --locked
+      - run: cargo test --no-default-features --locked
+      - run: cargo test --locked --test nt_buffers_windows -- --ignored

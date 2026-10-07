@@ -1,0 +1,62 @@
+{
+  "spec_revision": "MS-PATCH 14.1 (2025-08-19)",
+  "oracle": "libmspack upstream lzxd.c compiled independently; repository decoder never used to generate expected output",
+  "vectors": [
+    {
+      "name": "official-abc",
+      "window_order": 17,
+      "reference_hex": "",
+      "output_length": 3,
+      "delta_sha256": "9d215a366c63050614d88a06b576f96cbd2584039894bd3b8bad6a14f570c210",
+      "output_sha256": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    },
+    {
+      "name": "reference-verbatim",
+      "window_order": 17,
+      "reference_hex": "4142434445464748",
+      "output_length": 3,
+      "delta_sha256": "f6c1b05a55e69f2c25e6ef88a0642a148be6089beb9699bc61e09ae313895e8a",
+      "output_sha256": "b5d4045c3f466fa91fe2cc6abe79232a1a57cdf104f7a26e716e0a1e2789df78"
+    },
+    {
+      "name": "reference-aligned",
+      "window_order": 17,
+      "reference_hex": "6162636465666768696a6b6c6d6e6f70",
+      "output_length": 3,
+      "delta_sha256": "f2d6c1beb9e0ace98dd008bfe10cca3ea7ab7bf644e0a0374fddabc2dfb018be",
+      "output_sha256": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    },
+    {
+      "name": "extended-257",
+      "window_order": 17,
+      "reference_hex": "5a",
+      "output_length": 257,
+      "delta_sha256": "0a5bfcce88f1efa8efde73cf7ea443e2593d326ddf8b6a501c3862268c0bb675",
+      "output_sha256": "bd499a8760d1ecd75dc68c6eb2e39c0700a24bbc50d90d08c7898c5dcea14b95"
+    },
+    {
+      "name": "extended-513",
+      "window_order": 17,
+      "reference_hex": "5a",
+      "output_length": 513,
+      "delta_sha256": "b355fb13a7fb165ac33aea7c83aaf414b90e3cec0e602430adcd232106c0d9dd",
+      "output_sha256": "08fb50150abaf34857f680fe89eabc36b8117b368006ba82e55ae0f6b67a8d2c"
+    },
+    {
+      "name": "extended-1537",
+      "window_order": 17,
+      "reference_hex": "5a",
+      "output_length": 1537,
+      "delta_sha256": "c1249a7d57df746a3f5c445748f83dd99ec04e8df0c599aed77af4e1b677fa66",
+      "output_sha256": "752925137c1dbc22a872564b82b1bb85e6613fe295ba1f77c522f5397a5dc937"
+    },
+    {
+      "name": "extended-32768",
+      "window_order": 17,
+      "reference_hex": "5a",
+      "output_length": 32768,
+      "delta_sha256": "d0ece95609b0f667ba88796e6e6c0716a9dbbff695722bfb667e42e8b370854e",
+      "output_sha256": "b78aabbda3b7179baac5a4c9cfda66a6d6a40697bacc1eedf5c1935ca2491893"
+    }
+  ]
+}

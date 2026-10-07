@@ -1,0 +1,15 @@
+{
+  "oracle": "libzstd 1.5.7",
+  "multiblock": {
+    "input_bytes": 681266,
+    "compressed_bytes": 601,
+    "frame_sha256": "dfbf9959ec57d30703bf857e9c8615db977f24d0b927f7ba58be1b891023dd86",
+    "output_sha256": "3af828c20d33eed220dfce5daf5b0e0986d39b7a6eb5b09b4c8a6e5ded1c15b3"
+  },
+  "dictionary": {
+    "input_bytes": 42014,
+    "compressed_bytes": 610,
+    "frame_sha256": "0ac7c4eb0dbf5629c5987297b63d179d44a87b2abcbd2aa63167699dbf5a21e0",
+    "output_sha256": "e2e412475d9821e8c2adb59aa9ea53218fb330b29ed096dd11a656c4ab66a7c1"
+  }
+}

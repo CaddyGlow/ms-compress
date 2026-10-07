@@ -1,0 +1,158 @@
+name: ms-compress Release
+on:
+  push:
+    tags: ['v*']
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+permissions:
+  contents: read
+defaults:
+  run:
+    working-directory: ms-compress
+jobs:
+  validate:
+    uses: ./.github/workflows/ci.yml
+
+  package:
+    needs: validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: ms-compress
+      - uses: dtolnay/rust-toolchain@1.99.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: validation
+          workspaces: |
+            ms-compress -> target
+            ms-compress/fuzz -> target
+      - name: Check tag matches package version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python3 - <<'PY'
+          import os, tomllib
+          with open("Cargo.toml", "rb") as manifest:
+              data = tomllib.load(manifest)
+          version = data.get("package", data.get("workspace", {}).get("package", {}))["version"]
+          if os.environ["RELEASE_TAG"] != f"v{version}":
+              raise SystemExit(f"Tag must match package version v{version}")
+          PY
+      - run: cargo package --locked
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-package
+          path: ms-compress/target/package/*.crate
+          if-no-files-found: error
+
+  binaries:
+    needs: package
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os: macos-15
+            target: aarch64-apple-darwin
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      TARGET: ${{ matrix.target }}
+      RELEASE_TAG: ${{ github.ref_name }}
+      MS_COMPRESS_BUILD_TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: ms-compress
+      - uses: dtolnay/rust-toolchain@1.99.0
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release-${{ matrix.target }}
+          workspaces: |
+            ms-compress -> target
+            ms-compress/fuzz -> target
+      - name: Build release outputs
+        run: cargo build --release --features cli --bin ms-compress --target "$TARGET" --locked
+      - name: Test release profile
+        run: cargo test --release --features cli --test cli --target "$TARGET" --locked
+      - name: Native Windows buffer interoperability
+        if: runner.os == 'Windows'
+        run: cargo test --release --features cli --target "$TARGET" --locked --test nt_buffers_windows -- --ignored
+      - name: Verify embedded release tag
+        run: |
+          executable=ms-compress
+          if [[ "$TARGET" == *-windows-* ]]; then executable+=.exe; fi
+          actual=$("target/$TARGET/release/$executable" --version)
+          test "$actual" = "ms-compress $RELEASE_TAG"
+      - name: Package compiled outputs and license notices
+        env:
+          OUTPUT_REPOSITORY: ms-compress
+        run: |
+          python3 - <<'PY'
+          import os, pathlib, shutil, tarfile
+          repo = os.environ["OUTPUT_REPOSITORY"]
+          target = os.environ["TARGET"]
+          directory = f"{repo}-{os.environ['RELEASE_TAG']}-{target}"
+          output = pathlib.Path("dist") / directory
+          output.mkdir(parents=True)
+          build = pathlib.Path("target") / target / "release"
+          files = [name + (".exe" if "windows" in target else "") for name in ['ms-compress']]
+          for name in files:
+              shutil.copy2(build / name, output / name)
+          shutil.copy2("README.md", output / "README.md")
+          for sibling in ['ms-compress']:
+              base = pathlib.Path("..") / sibling
+              for path in base.rglob("*"):
+                  if any(part in {".git", "target", "dist"} for part in path.relative_to(base).parts):
+                      continue
+                  if path.is_file() and path.name.upper().startswith(("LICENSE", "NOTICE", "COPYING")):
+                      dest = output / "licenses" / sibling / path.relative_to(base)
+                      dest.parent.mkdir(parents=True, exist_ok=True)
+                      shutil.copy2(path, dest)
+          with tarfile.open(f"dist/{directory}.tar.gz", "w:gz") as archive:
+              archive.add(output, arcname=directory)
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.target }}
+          path: ms-compress/dist/*.tar.gz
+          if-no-files-found: error
+
+  github-release:
+    needs: [package, binaries]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: dist
+      - name: Publish package, binaries, and checksums
+        working-directory: dist
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          shopt -s nullglob
+          files=(*.crate *.tar.gz)
+          test "${#files[@]}" -gt 0
+          sha256sum "${files[@]}" > SHA256SUMS
+          flags=()
+          if [[ "$RELEASE_TAG" == *-* ]]; then flags+=(--prerelease); fi
+          gh release create "$RELEASE_TAG" --verify-tag --generate-notes             "${flags[@]}" "${files[@]}" SHA256SUMS

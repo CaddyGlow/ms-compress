@@ -1,0 +1,51 @@
+[package]
+name = "ms-compress"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99"
+license = "LGPL-2.1-only AND LGPL-2.1-or-later AND Zlib AND Apache-2.0 AND MIT"
+description = "Native Rust Microsoft compression codecs: LZNT1, XPRESS, LZX, LZMS, Quantum, DEFLATE, and LZMA"
+
+[features]
+default = ["std", "lzma-optimization"]
+std = ["ruzstd/std"]
+lzma-optimization = [] # Optimized LZMA internals; works with no_std.
+vpclmulqdq = [] # AVX-512 CRC32 acceleration; stable since Rust 1.89.
+avx512 = ["vpclmulqdq"] # AVX-512 checksum acceleration; stable since Rust 1.89.
+lsx = [] # LoongArch LSX acceleration; intrinsics require nightly Rust.
+cli = ["std", "dep:clap", "dep:tempfile"]
+
+[dependencies]
+ruzstd = { git = "https://github.com/CaddyGlow/zstd-rs", rev = "468f57ac3de6779ab17191f8bc2fd2bebc0b5439", default-features = false, features = ["hash"] }
+clap = { version = "4.5", features = ["derive"], optional = true }
+tempfile = { version = "3.23", optional = true }
+
+[dev-dependencies]
+crc32fast = "1.3.2"
+memoffset = "0.9.1"
+quickcheck = { version = "1.0.3", default-features = false }
+tempfile = "3.23"
+
+[[bin]]
+name = "ms-compress"
+path = "src/main.rs"
+required-features = ["cli"]
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[[bench]]
+name = "codecs"
+harness = false
+
+[workspace]
+exclude = ["fuzz"]
+resolver = "3"
+
+[profile.release]
+lto = "thin"
+strip = true
+
+[lints.clippy]
+# Preserve established iterator/remainder handling during the Rust 1.99 upgrade.
+chunks_exact_to_as_chunks = "allow"
