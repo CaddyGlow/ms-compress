@@ -104,6 +104,16 @@ fn rust_and_ntdll_buffers_interoperate() {
                     assert!(input.iter().all(|&byte| byte == 0));
                     continue;
                 }
+                // Native XPRESS refuses an expanded representation rather than
+                // returning a literal stream. Rust -> Windows was checked above.
+                if format == 3 && status == 0xc0000023u32 as i32 {
+                    assert!(
+                        encoded.len() >= input.len(),
+                        "native XPRESS refused a compressible input: size={size}, encoded={}, capacity={}, written={written}",
+                        encoded.len(), native.len(),
+                    );
+                    continue;
+                }
                 assert_eq!(status, 0, "format={format} size={size} Windows -> Rust");
                 native.truncate(written as usize);
                 output.fill(0);

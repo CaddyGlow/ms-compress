@@ -10,6 +10,12 @@ homepage = "https://github.com/CaddyGlow/ms-compress"
 readme = "README.md"
 keywords = ["compression", "lznt1", "xpress", "lzx", "lzms"]
 categories = ["compression", "no-std"]
+# Full independent-oracle corpora remain in Git and run in CI, outside the registry package.
+exclude = [
+    "tests/differential.rs", "tests/lzms_differential.rs", "tests/lzx_differential.rs",
+    "tests/fixtures/xpress-oracle.wxp", "tests/fixtures/lzms-oracle.wlm", "tests/fixtures/lzx-oracle.bin",
+    "tests/fixtures/*-libfuzzer", "fuzz/**", "docs/**", ".github/**", "scripts/**",
+]
 
 [features]
 default = ["std", "lzma-optimization"]

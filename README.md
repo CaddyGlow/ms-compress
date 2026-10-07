@@ -211,3 +211,7 @@ authorized to publish `ms-compress` before pushing the first release tag.
 Release binaries embed the Git tag at build time and report it with `--version`.
 Local builds use the Cargo package version unless `MS_COMPRESS_BUILD_TAG` is set
 when compiling.
+
+Registry packages omit the large independent-oracle corpora and their three
+differential test targets. The fixtures, provenance and complete validation
+suite remain in this repository and run in CI; other tests ship in the crate.
