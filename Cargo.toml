@@ -5,6 +5,11 @@ edition = "2024"
 rust-version = "1.99"
 license = "LGPL-2.1-only AND LGPL-2.1-or-later AND Zlib AND Apache-2.0 AND MIT"
 description = "Native Rust Microsoft compression codecs: LZNT1, XPRESS, LZX, LZMS, Quantum, DEFLATE, and LZMA"
+repository = "https://github.com/CaddyGlow/ms-compress"
+homepage = "https://github.com/CaddyGlow/ms-compress"
+readme = "README.md"
+keywords = ["compression", "lznt1", "xpress", "lzx", "lzms"]
+categories = ["compression", "no-std"]
 
 [features]
 default = ["std", "lzma-optimization"]
@@ -16,7 +21,7 @@ lsx = [] # LoongArch LSX acceleration; intrinsics require nightly Rust.
 cli = ["std", "dep:clap", "dep:tempfile"]
 
 [dependencies]
-ruzstd = { git = "https://github.com/CaddyGlow/zstd-rs", rev = "468f57ac3de6779ab17191f8bc2fd2bebc0b5439", default-features = false, features = ["hash"] }
+ruzstd = { package = "ms-compress-ruzstd", version = "=0.9.1", default-features = false, features = ["hash"] }
 clap = { version = "4.5", features = ["derive"], optional = true }
 tempfile = { version = "3.23", optional = true }
 

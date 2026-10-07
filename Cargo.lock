@@ -193,10 +193,16 @@ dependencies = [
  "clap",
  "crc32fast",
  "memoffset",
+ "ms-compress-ruzstd",
  "quickcheck",
- "ruzstd",
  "tempfile",
 ]
+
+[[package]]
+name = "ms-compress-ruzstd"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3713af486ad3232ebd7bf988bbece755be1dd6848cef701038ada611b88a532"
 
 [[package]]
 name = "once_cell"
@@ -271,11 +277,6 @@ dependencies = [
  "linux-raw-sys",
  "windows-sys",
 ]
-
-[[package]]
-name = "ruzstd"
-version = "0.9.1"
-source = "git+https://github.com/CaddyGlow/zstd-rs?rev=468f57ac3de6779ab17191f8bc2fd2bebc0b5439#468f57ac3de6779ab17191f8bc2fd2bebc0b5439"
 
 [[package]]
 name = "strsim"

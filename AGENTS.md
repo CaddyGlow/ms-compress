@@ -2,7 +2,7 @@
 
 This standalone Rust 2024 package provides Microsoft compression codecs and
 DEFLATE/LZMA implementations. The library supports `no_std + alloc` and uses a
-pinned patched `ruzstd` dependency for Zstandard; additional normal dependencies
+pinned patched `ms-compress-ruzstd` dependency for Zstandard; additional normal dependencies
 are enabled by the CLI feature. Preserve codec license
 texts, attribution notices, fixtures, and historical validation evidence.
 

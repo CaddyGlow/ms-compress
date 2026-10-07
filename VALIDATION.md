@@ -1,5 +1,19 @@
 # Codec validation
 
+## Published Zstandard dependency (2026-10-07)
+
+The patched fork is published as `ms-compress-ruzstd` 0.9.1, from fork commit
+`5577801`. ms-compress now uses an exact crates.io version through the `ruzstd`
+dependency alias, preserving `ms_compress::zstd` and no_std feature forwarding.
+This replaces the Git-only dependency below so Cargo packaging retains the
+patched implementation for downstream users.
+
+Validation against the published registry crate passed all-feature tests, strict
+all-target/all-feature Clippy, no-default-feature tests, thumbv7em-none-eabi
+library compilation, and fuzz regressions with locked dependencies. A workspace
+publish dry run also verified the packaged ms-compress crate. Its normalized
+manifest references `ms-compress-ruzstd = "=0.9.1"` and contains no Git dependency.
+
 ## Zstandard fork dependency (2026-10-07)
 
 Zstandard now uses CaddyGlow/zstd-rs commit

@@ -46,7 +46,7 @@ dependencies = [
 name = "ms-compress"
 version = "0.1.0"
 dependencies = [
- "ruzstd",
+ "ms-compress-ruzstd",
 ]
 
 [[package]]
@@ -58,6 +58,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ms-compress-ruzstd"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3713af486ad3232ebd7bf988bbece755be1dd6848cef701038ada611b88a532"
+
+[[package]]
 name = "rustc_version"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -65,11 +71,6 @@ checksum = "cfcb3a22ef46e85b45de6ee7e79d063319ebb6594faafcf1c225ea92ab6e9b92"
 dependencies = [
  "semver",
 ]
-
-[[package]]
-name = "ruzstd"
-version = "0.9.1"
-source = "git+https://github.com/CaddyGlow/zstd-rs?rev=468f57ac3de6779ab17191f8bc2fd2bebc0b5439#468f57ac3de6779ab17191f8bc2fd2bebc0b5439"
 
 [[package]]
 name = "semver"

@@ -3,7 +3,7 @@
 Pure Rust Microsoft compression codecs shared by WIM, CAB, Windows buffer,
 and delta consumers, with DEFLATE, zlib, gzip, LZMA1, LZMA2, and Zstandard support. The Microsoft codecs
 deny unsafe code; upstream SIMD and allocation code is confined to the vendored
-`zlib` and `lzma` modules. Its library uses `core` and `alloc` directly and depends on a pinned `ruzstd` fork.
+`zlib` and `lzma` modules. Its library uses `core` and `alloc` directly and depends on the patched `ms-compress-ruzstd` crate pinned to version 0.9.1.
 Licenses and codec attribution notices are retained alongside the implementation.
 
 Select the API for the encoded format:
@@ -59,7 +59,7 @@ Zstandard also supports `no_std + alloc`, including dictionaries and checksums,
 with no external hashing dependency. Its checked decoder storage forbids unsafe
 code. Use `zstd::io` for the selected std or no_std I/O traits. Retained-output
 decoding must not be mixed with destructive reads within one frame; see
-[the pinned ruzstd fork](https://github.com/CaddyGlow/zstd-rs/tree/468f57ac3de6779ab17191f8bc2fd2bebc0b5439)
+[ms-compress-ruzstd](https://crates.io/crates/ms-compress-ruzstd/0.9.1)
 for the implementation and [historical provenance](docs/zstd-vendoring/PROVENANCE.md).
 
 The library has no dependencies on `wim-memory` or a separate allocation crate.
