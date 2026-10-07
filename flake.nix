@@ -35,31 +35,41 @@
               "i686-pc-windows-msvc"
             ];
           };
+          nightly = pkgs.rust-bin.selectLatestNightlyWith (
+            toolchain: toolchain.default.override { extensions = [ "rust-src" ]; }
+          );
+          mkDevShell =
+            toolchain: extraPackages:
+            pkgs.mkShell {
+              packages = [
+                toolchain
+                pkgs.go-task
+                pkgs.python3
+                pkgs.git-lfs
+                pkgs.sccache
+                pkgs.nixfmt
+                pkgs.cargo-xwin
+                pkgs.clang
+                pkgs.lld
+                pkgs.llvm
+                pkgs.actionlint
+                pkgs.powershell
+                pkgs.shellcheck
+                # Native dependencies for honggfuzz's instrumented builds.
+                pkgs.gnumake
+                pkgs.binutils-unwrapped
+                pkgs.libunwind
+                pkgs.xz
+              ]
+              ++ extraPackages;
+              XWIN_ARCH = "x86,x86_64";
+              shellHook = "";
+            };
         in
         {
-          default = pkgs.mkShell {
-            packages = [
-              rust
-              pkgs.go-task
-              pkgs.python3
-              pkgs.sccache
-              pkgs.nixfmt
-              pkgs.cargo-xwin
-              pkgs.clang
-              pkgs.lld
-              pkgs.llvm
-              pkgs.actionlint
-              pkgs.powershell
-              pkgs.shellcheck
-              # Native dependencies for honggfuzz's instrumented builds.
-              pkgs.gnumake
-              pkgs.binutils-unwrapped
-              pkgs.libunwind
-              pkgs.xz
-            ];
-            XWIN_ARCH = "x86,x86_64";
-            shellHook = "";
-          };
+          default = mkDevShell rust [ ];
+          fuzz = mkDevShell rust [ ];
+          nightly = mkDevShell nightly [ ];
         }
       );
     };
