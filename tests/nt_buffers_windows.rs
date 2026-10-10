@@ -17,6 +17,15 @@ unsafe extern "system" {
         final_size: *mut u32,
         workspace: *mut u8,
     ) -> i32;
+    fn RtlDecompressBufferEx(
+        format: u16,
+        output: *mut u8,
+        output_size: u32,
+        input: *const u8,
+        input_size: u32,
+        final_size: *mut u32,
+        workspace: *mut u8,
+    ) -> i32;
     fn RtlDecompressBuffer(
         format: u16,
         output: *mut u8,
@@ -134,5 +143,67 @@ fn rust_and_ntdll_buffers_interoperate() {
             native_decoded > 0,
             "no native compression streams verified for format={format}"
         );
+    }
+}
+
+#[test]
+#[ignore = "requires native Windows ntdll; verifies XPRESS Huffman buffers"]
+fn huffman_ntdll_buffers_decode_in_rust() {
+    let mut compress_size = 0;
+    let mut decompress_size = 0;
+    // SAFETY: Size pointers refer to live values.
+    assert_eq!(
+        unsafe { RtlGetCompressionWorkSpaceSize(4, &mut compress_size, &mut decompress_size) },
+        0
+    );
+    let mut compress_workspace = vec![0u64; (compress_size as usize).div_ceil(8)];
+    let mut decompress_workspace = vec![0u64; (decompress_size as usize).div_ceil(8)];
+    for size in [32, 65535, 65536, 65537, 131072, 200000] {
+        let input: Vec<u8> = (0..size).map(|i| (i % 251) as u8).collect();
+        let mut encoded = vec![0; size * 2 + 65536];
+        let mut written = 0;
+        // SAFETY: Buffers are disjoint and sizes match their allocations;
+        // aligned workspace has the size requested by ntdll.
+        assert_eq!(
+            unsafe {
+                RtlCompressBuffer(
+                    4,
+                    input.as_ptr(),
+                    size as u32,
+                    encoded.as_mut_ptr(),
+                    encoded.len() as u32,
+                    4096,
+                    &mut written,
+                    compress_workspace.as_mut_ptr().cast(),
+                )
+            },
+            0,
+            "size={size}"
+        );
+        encoded.truncate(written as usize);
+        let mut output = vec![0; size];
+        assert_eq!(
+            ms_compress::decompress_xpress_huffman_buffer(&encoded, &mut output),
+            Ok(size)
+        );
+        assert_eq!(output, input);
+        output.fill(0);
+        // SAFETY: Same buffer and workspace guarantees as above.
+        assert_eq!(
+            unsafe {
+                RtlDecompressBufferEx(
+                    4,
+                    output.as_mut_ptr(),
+                    size as u32,
+                    encoded.as_ptr(),
+                    encoded.len() as u32,
+                    &mut written,
+                    decompress_workspace.as_mut_ptr().cast(),
+                )
+            },
+            0
+        );
+        assert_eq!(written as usize, size);
+        assert_eq!(output, input);
     }
 }

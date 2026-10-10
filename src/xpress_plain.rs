@@ -114,8 +114,11 @@ pub fn compress(input: &[u8]) -> Result<Vec<u8>, Error> {
             out.push(input[pos]);
             1
         };
-        for index in pos..pos + advance {
-            matcher.insert(input, index);
+        // No future search observes the final token's dictionary updates.
+        if pos + advance < input.len() {
+            for index in pos..pos + advance {
+                matcher.insert(input, index);
+            }
         }
         pos += advance;
         count += 1;

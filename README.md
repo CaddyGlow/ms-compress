@@ -12,6 +12,7 @@ Select the API for the encoded format:
 | --- | --- |
 | LZNT1 / Windows format 2 | `ms_compress::lznt1::{compress, decompress}` |
 | Plain XPRESS / Windows format 3 | `ms_compress::xpress_plain::{compress, decompress}` |
+| XPRESS Huffman / Windows format 4 | `ms_compress::decompress_xpress_huffman_buffer` |
 | WIM XPRESS Huffman | `ms_compress::decompress_xpress`, `ms_compress::xpress_encode::compress_xpress` |
 | WIM LZX | `ms_compress::lzx::decompress_lzx`, `ms_compress::lzx_encode::compress_lzx` |
 | CAB LZX | `ms_compress::lzx::CabinetLzxDecoder`, `ms_compress::lzx_encode::CabinetLzxEncoder` |
@@ -27,6 +28,13 @@ Select the API for the encoded format:
 The `context` module retains the WIM codec selection and reusable context APIs.
 Windows compression format numbers and WIM codec identifiers are separate
 namespaces; choose the API matching the buffer's format.
+
+For NT XPRESS Huffman buffers (format 4, `RtlDecompressBufferEx`), call
+`decompress_xpress_huffman_buffer(input, &mut output)` with the exact expected
+decompressed size. It handles successive 64 KiB Huffman blocks, preserves match
+history across blocks, and rejects truncated coding units. It stops at the end
+of output and ignores trailing input. The existing WIM decoder retains its
+permissive padding behavior.
 
 From the repository root:
 
@@ -111,6 +119,11 @@ AVX-512 Adler32 and match comparison. These features require Rust 1.89 or later
 and appropriate target features; enabling a Cargo feature alone does not force
 unsupported instructions. `lsx` enables LoongArch LSX support and requires
 nightly Rust on LoongArch because its intrinsics remain unstable.
+
+On native Windows, `cargo bench --bench rtl_codecs --locked` compares Rust
+compression and decompression with ntdll's LZNT1, plain XPRESS, and XPRESS
+Huffman implementations. See [VALIDATION.md](VALIDATION.md) for timing scope,
+workloads, and format selection.
 
 For a build optimized for the machine that runs Cargo, enable the compiler's
 host CPU selection:

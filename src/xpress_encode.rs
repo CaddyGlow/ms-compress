@@ -84,22 +84,27 @@ impl XpressCompressor {
         let storage = |size, value| {
             crate::memory::filled_vec(size, value).map_err(|_| EncodeError::OutOfMemory)
         };
+        let mut previous = Vec::new();
+        previous
+            .try_reserve_exact(maximum)
+            .map_err(|_| EncodeError::OutOfMemory)?;
+        let mut items = Vec::new();
+        items
+            .try_reserve_exact(maximum + 1)
+            .map_err(|_| EncodeError::OutOfMemory)?;
+        let mut output = Vec::new();
+        // Reserve the worst case without touching pages for unused tokens or
+        // output bytes. Compression initializes only the prefixes it uses.
+        output
+            .try_reserve_exact(maximum * 8 + 264)
+            .map_err(|_| EncodeError::OutOfMemory)?;
         Ok(Self {
             maximum,
             next_base: 1,
             heads: storage(65536, 0)?,
-            previous: storage(maximum, 0)?,
-            items: crate::memory::filled_vec(
-                maximum + 1,
-                Item {
-                    symbol: 0,
-                    length: 0,
-                    offset: 0,
-                },
-            )
-            .map_err(|_| EncodeError::OutOfMemory)?,
-            output: crate::memory::filled_vec(maximum * 8 + 264, 0)
-                .map_err(|_| EncodeError::OutOfMemory)?,
+            previous,
+            items,
+            output,
         })
     }
     /// Compress into retained storage; the next call invalidates this borrowed result.
@@ -163,6 +168,8 @@ impl XpressCompressor {
         }
         // Each token consumes at least one input byte and emits at most 30 bits
         // plus three extension bytes; 8 bytes per input byte safely bounds storage.
+        crate::memory::resize_within_capacity(&mut self.output, encoded_size, 0)
+            .map_err(|_| EncodeError::OutOfMemory)?;
         let mut writer = Writer::new(&mut self.output[..]);
         for index in 0..256 {
             writer.output[index] = lengths[index * 2] | (lengths[index * 2 + 1] << 4);
@@ -218,11 +225,15 @@ fn parse(
     input: &[u8],
     base: u32,
     heads: &mut [u32],
-    previous: &mut [u32],
-    items: &mut [Item],
+    previous: &mut Vec<u32>,
+    items: &mut Vec<Item>,
 ) -> Result<([u64; 512], usize, usize), EncodeError> {
-    // Retain initialized storage; expose only the tokens written this time.
-    let mut item_count = 0;
+    // Current-block stamps only refer to links already appended in this call.
+    // Clearing lengths retains the reserved allocations without zero-filling.
+    previous.clear();
+    items.clear();
+    crate::memory::ensure_capacity(previous, input.len()).map_err(|_| EncodeError::OutOfMemory)?;
+    crate::memory::ensure_capacity(items, input.len() + 1).map_err(|_| EncodeError::OutOfMemory)?;
     let mut frequencies = [0u64; 512];
     let mut extension_bytes = 0;
     let mut position = 0;
@@ -238,7 +249,9 @@ fn parse(
                 let at = (candidate - base) as usize;
                 // This candidate cannot improve the retained match if it differs
                 // at that match's boundary. Equal-length ties keep the old offset.
-                if input[at + best_length] != input[position + best_length] {
+                if input[at + best_length] != input[position + best_length]
+                    || input[at..at + 3] != input[position..position + 3]
+                {
                     candidate = previous[at];
                     continue;
                 }
@@ -271,28 +284,30 @@ fn parse(
         if item.length >= 18 {
             extension_bytes += 1 + 2 * usize::from(item.length >= 273);
         }
-        *items.get_mut(item_count).ok_or(EncodeError::OutOfMemory)? = item;
-        item_count += 1;
-        for (relative, link) in previous[position..position + usize::from(item.length)]
-            .iter_mut()
-            .enumerate()
-        {
-            let inserted = position + relative;
+        items.push(item);
+        // A later call receives a new position stamp, so neither this block
+        // nor the next call can observe updates after its final token.
+        let insert_end = if position + usize::from(item.length) == input.len() {
+            position
+        } else {
+            position + usize::from(item.length)
+        };
+        for inserted in position..insert_end {
             if inserted + 3 <= input.len() {
                 let bucket = hash(input, inserted);
-                *link = heads[bucket];
+                previous.push(heads[bucket]);
                 heads[bucket] = base + inserted as u32;
             }
         }
         position += usize::from(item.length);
     }
     frequencies[256] += 1;
-    *items.get_mut(item_count).ok_or(EncodeError::OutOfMemory)? = Item {
+    items.push(Item {
         symbol: 256,
         length: 0,
         offset: 0,
-    };
-    Ok((frequencies, extension_bytes, item_count + 1))
+    });
+    Ok((frequencies, extension_bytes, items.len()))
 }
 
 fn code(frequencies: &[u64; 512]) -> ([u8; 512], [u16; 512]) {
@@ -449,6 +464,47 @@ impl<'a> Writer<'a> {
 mod tests {
     use super::code;
     use alloc::{vec, vec::Vec};
+
+    #[test]
+    fn reserved_workspaces_handle_growth_and_capacity_rejection_without_reallocation() {
+        let mut compressor = super::XpressCompressor::new(65536).unwrap();
+        let allocations = (
+            (compressor.heads.as_ptr(), compressor.heads.capacity()),
+            (compressor.previous.as_ptr(), compressor.previous.capacity()),
+            (compressor.items.as_ptr(), compressor.items.capacity()),
+            (compressor.output.as_ptr(), compressor.output.capacity()),
+        );
+        for size in [1, 65536, 25, 32768, 3, 65535] {
+            for random in [false, true] {
+                let mut state = 23u32;
+                let input: Vec<u8> = (0..size)
+                    .map(|_| {
+                        state ^= state << 13;
+                        state ^= state >> 17;
+                        state ^= state << 5;
+                        if random { state as u8 } else { b'A' }
+                    })
+                    .collect();
+                assert!(compressor.compress_block(&input, 261).unwrap().is_none());
+                let actual = compressor
+                    .compress_block(&input, usize::MAX)
+                    .unwrap()
+                    .unwrap();
+                let mut decoded = vec![0; size];
+                crate::decompress_xpress(actual, &mut decoded).unwrap();
+                assert_eq!(decoded, input);
+                assert_eq!(
+                    allocations,
+                    (
+                        (compressor.heads.as_ptr(), compressor.heads.capacity()),
+                        (compressor.previous.as_ptr(), compressor.previous.capacity()),
+                        (compressor.items.as_ptr(), compressor.items.capacity()),
+                        (compressor.output.as_ptr(), compressor.output.capacity()),
+                    )
+                );
+            }
+        }
+    }
 
     #[test]
     fn retained_output_overwrites_stale_bytes_across_varying_block_sizes() {

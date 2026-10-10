@@ -43,6 +43,79 @@ pub fn decompress_xpress(input: &[u8], output: &mut [u8]) -> Result<(), DecodeEr
 pub fn decompress_xpress_windows(input: &[u8], output: &mut [u8]) -> Result<(), DecodeError> {
     decompress_using(input, output, &mut HuffmanCode::empty(), true)
 }
+
+/// Decode an MS-XCA XPRESS Huffman buffer, as used by NT format 4.
+///
+/// Unlike the WIM decoder, this accepts successive Huffman blocks and rejects
+/// truncated coding units. `output` must have the exact decompressed size.
+/// Matches may cross the nominal 64 KiB block boundary and refer to previous
+/// blocks. No allocation is performed. On error, output may be partially written.
+/// Decoding stops when output is full; trailing input and the optional EOF
+/// symbol are ignored. An empty output succeeds without reading input.
+/// NT callers use `RtlDecompressBufferEx` with a decompression workspace for
+/// this format.
+///
+/// # Errors
+/// Returns a Windows buffer codec error for malformed codes, truncated input,
+/// invalid offsets, or matches exceeding the supplied output.
+pub fn decompress_xpress_huffman_buffer(
+    mut input: &[u8],
+    output: &mut [u8],
+) -> Result<usize, crate::BufferError> {
+    use crate::nt_common::Error;
+    let mut produced = 0;
+    while produced < output.len() {
+        let header = input.get(..HEADER_BYTES).ok_or(Error::TruncatedInput)?;
+        let code = HuffmanCode::from_header(header).map_err(|_| Error::InvalidData)?;
+        if code.empty {
+            return Err(Error::InvalidData);
+        }
+        let mut bits = InputBitstream::new(&input[HEADER_BYTES..]);
+        bits.ensure_bits(16);
+        bits.ensure_bits(32);
+        let block_start = produced;
+        while produced - block_start < 65536 && produced < output.len() {
+            let (symbol, length) = code
+                .read_symbol(&mut bits)
+                .map_err(|_| Error::InvalidData)?;
+            bits.remove_bits(length);
+            bits.ensure_bits(16);
+            if bits.truncated {
+                return Err(Error::TruncatedInput);
+            }
+            if symbol < 256 {
+                output[produced] = symbol as u8;
+                produced += 1;
+                continue;
+            }
+            let offset_bits = usize::from((symbol >> 4) & 15);
+            let mut length = usize::from(symbol & 15);
+            if length == 15 {
+                length += usize::from(bits.read_byte());
+                if length == 270 {
+                    length = usize::from(bits.read_u16());
+                    if length == 0 {
+                        length =
+                            usize::try_from(bits.read_u32()).map_err(|_| Error::InvalidData)?;
+                    }
+                    if length < 15 {
+                        return Err(Error::InvalidData);
+                    }
+                }
+            }
+            let offset = (1usize << offset_bits) | bits.pop_bits(offset_bits) as usize;
+            bits.ensure_bits(16);
+            if bits.truncated {
+                return Err(Error::TruncatedInput);
+            }
+            let length = length.checked_add(3).ok_or(Error::InvalidData)?;
+            crate::nt_common::copy(output, produced, offset, length)?;
+            produced += length;
+        }
+        input = &input[HEADER_BYTES + bits.next..];
+    }
+    Ok(produced)
+}
 #[derive(Debug)]
 pub(crate) struct XpressDecoder {
     code: Vec<HuffmanCode>,
@@ -233,6 +306,7 @@ struct InputBitstream<'a> {
     next: usize,
     buffer: u32,
     bits_left: usize,
+    truncated: bool,
 }
 
 impl<'a> InputBitstream<'a> {
@@ -242,6 +316,7 @@ impl<'a> InputBitstream<'a> {
             next: 0,
             buffer: 0,
             bits_left: 0,
+            truncated: false,
         }
     }
 
@@ -255,6 +330,7 @@ impl<'a> InputBitstream<'a> {
             self.next += 2;
             self.bits_left += 16;
         } else {
+            self.truncated = true;
             // Padding does not consume a lone remaining input byte; that byte
             // can still be read as a literal match-length extension.
             self.bits_left = 32;
@@ -285,6 +361,7 @@ impl<'a> InputBitstream<'a> {
             self.next += 1;
             byte
         } else {
+            self.truncated = true;
             0
         }
     }
@@ -294,6 +371,7 @@ impl<'a> InputBitstream<'a> {
             self.next += 4;
             u32::from_le_bytes([word[0], word[1], word[2], word[3]])
         } else {
+            self.truncated = true;
             0
         }
     }
@@ -303,6 +381,7 @@ impl<'a> InputBitstream<'a> {
             self.next += 2;
             u16::from_le_bytes([word[0], word[1]])
         } else {
+            self.truncated = true;
             0
         }
     }

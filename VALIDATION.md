@@ -85,7 +85,11 @@ cargo bench -p ms-compress --bench codecs --locked > target/ms-compress-bench.cs
 The dependency-free release benchmark covers all twelve encoder/decoder formats
 and LZX Delta decoding. Workloads are deterministic repetitive, patterned, and
 pseudorandom data at 4 KiB and 32 KiB, with three time-bounded samples per
-operation. LZMA uses preset 6 and dictionaries capped at input size; DEFLATE
+operation. The `xpress-huffman-buffer` decoding rows additionally cover 64 KiB
+and 128 KiB. The 128 KiB workloads use two literal-only Huffman blocks and
+have dataset names ending in `-literal-blocks`; smaller workloads use the
+existing XPRESS encoder. Buffer encoding is setup only and is not timed.
+LZMA uses preset 6 and dictionaries capped at input size; DEFLATE
 uses default level 6. Raw LZMA2 benchmark buffers include a four-byte dictionary
 size prefix for the decoder. Every workload is decoded and checked before timing; CSV records
 compressed size, iterations, elapsed time, and throughput in MiB/s.
@@ -95,6 +99,42 @@ CI uses 10 ms to smoke-test the runner, not to enforce performance thresholds.
 Measurements include context construction and codec output allocation, but
 exclude input generation and output-buffer allocation for decoding. They measure
 end-to-end one-shot API costs, not steady-state reusable context throughput.
+
+On native Windows, compare Rust with the actual ntdll codecs using:
+
+```sh
+cargo bench --bench rtl_codecs --locked > rtl-codecs.csv
+```
+
+This covers formats 2 (LZNT1), 3 (plain XPRESS), and 4 (XPRESS Huffman), with
+five alternating-order samples for repetitive, patterned, and pseudorandom
+inputs from 4 KiB to 1 MiB. Set `MS_COMPRESS_RTL_FORMAT` to `2`, `3`, or `4`
+to select one format, and `MS_COMPRESS_BENCH_MS` to set each sample's duration.
+Compression measurements include output allocation and workspace construction
+for both implementations. Rust Huffman compression is limited to 64 KiB;
+larger inputs measure native compression only. Native compression refusals
+are logged and omitted from throughput results.
+
+Both decoders validate every available Rust/native compressed stream before
+timing. Decompression measurements reuse output buffers and the native
+workspace, and the `source` column identifies which encoder produced the
+identical buffer supplied to each decoder. CSV includes compressed sizes for
+compression-ratio comparisons. Run this on Windows; Wine is not a native RTL
+performance oracle.
+
+The [2026-10-10 native run](docs/benchmarks/rtl-codecs-2026-10-10.md) records
+1,260 measurements on Windows 11 under KVM, including both encoding directions
+validated by both decoders. Its raw CSV and environment details are retained
+with the report.
+
+The [native routine analysis](docs/benchmarks/rtl-compression-analysis-2026-10-10.md)
+and [first optimization rerun](docs/benchmarks/rtl-codecs-optimized-2026-10-10.md)
+record the inspected binary identity, safe parser optimizations, remaining
+performance gaps, and the follow-up CSV.
+
+The [Huffman scratch initialization follow-up](docs/benchmarks/rtl-huffman-scratch-2026-10-10.md)
+retains fresh before/after native measurements, unchanged compressed sizes,
+and regression coverage for reserved workspace reuse.
 Compare runs on the same host, Rust toolchain, CPU placement, and power settings;
 retain CSV and environment information for performance claims. No statistical
 regression threshold or independently calibrated speed claim is established.

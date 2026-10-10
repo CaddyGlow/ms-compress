@@ -107,6 +107,11 @@ impl Matcher {
         if previous >= pos || pos - previous > window {
             return (0, 0);
         }
+        // Fewer than three equal bytes cannot form a token. Reject hash
+        // collisions before entering the long-match/SIMD dispatch path.
+        if input[previous..previous + 3] != input[pos..pos + 3] {
+            return (0, 0);
+        }
         let limit = maximum.min(input.len() - pos);
         let length = crate::zlib::common_prefix(
             &input[previous..previous + limit],

@@ -151,8 +151,11 @@ pub fn compress(input: &[u8]) -> Result<Vec<u8>, Error> {
                     scratch.push(chunk[pos]);
                     1
                 };
-                for index in pos..pos + advance {
-                    matcher.insert(chunk, index);
+                // The next chunk starts with a fresh dictionary.
+                if pos + advance < chunk.len() {
+                    for index in pos..pos + advance {
+                        matcher.insert(chunk, index);
+                    }
                 }
                 pos += advance;
             }

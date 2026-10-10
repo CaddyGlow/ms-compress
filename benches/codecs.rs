@@ -41,6 +41,28 @@ fn encode(codec: usize, input: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
             assert_eq!(result, ms_compress::zlib::ReturnCode::Ok);
             encoded.to_vec()
         }
+        12 => {
+            if input.len() <= 65536 {
+                return Ok(ms_compress::xpress_encode::compress_xpress(
+                    input,
+                    input.len() * 2 + 4096,
+                )?
+                .ok_or("unencodable benchmark input")?);
+            }
+            // WIM blocks include EOF coding bits and cannot simply be joined
+            // into an NT buffer. Use complete eight-bit literal codes for the
+            // multi-block workload: 256 literals, no match symbols or EOF.
+            let mut encoded = Vec::new();
+            for block in input.chunks(65536) {
+                encoded.extend_from_slice(&[0x88; 128]);
+                encoded.extend_from_slice(&[0; 128]);
+                for pair in block.chunks(2) {
+                    encoded.extend_from_slice(&[pair.get(1).copied().unwrap_or(0), pair[0]]);
+                }
+                encoded.extend_from_slice(&[0; 2]);
+            }
+            encoded
+        }
         _ => return Err("unknown codec".into()),
     })
 }
@@ -79,6 +101,12 @@ fn decode(codec: usize, input: &[u8], output: &mut [u8]) -> Result<(), Box<dyn E
             );
             assert_eq!(result, ms_compress::zlib::ReturnCode::Ok);
             assert_eq!(decoded.len(), output.len());
+        }
+        12 => {
+            assert_eq!(
+                ms_compress::decompress_xpress_huffman_buffer(input, output)?,
+                output.len()
+            );
         }
         _ => return Err("unknown codec".into()),
     }
@@ -121,11 +149,17 @@ fn main() -> Result<(), Box<dyn Error>> {
         "deflate",
         "zlib",
         "gzip",
+        "xpress-huffman-buffer",
     ]
     .iter()
     .enumerate()
     {
-        for size in [4096, 32768] {
+        let sizes: &[usize] = if codec == 12 {
+            &[4096, 32768, 65536, 131072]
+        } else {
+            &[4096, 32768]
+        };
+        for &size in sizes {
             for dataset in ["repeat", "pattern", "random"] {
                 let mut seed = 0x12345678u32;
                 let input: Vec<u8> = (0..size)
@@ -146,22 +180,28 @@ fn main() -> Result<(), Box<dyn Error>> {
                 decode(codec, &encoded, &mut output)?;
                 assert_eq!(output, input);
                 for sample in 1..=3 {
-                    let (iterations, elapsed) = measure(
-                        || {
-                            black_box(encode(codec, black_box(&input)).expect("validated encoder"));
-                        },
-                        budget,
-                    );
-                    report(
-                        name,
-                        dataset,
-                        size,
-                        encoded.len(),
-                        "compress",
-                        sample,
-                        iterations,
-                        elapsed,
-                    );
+                    // Format 4 has a decoder API; encoding above only prepares
+                    // the workload and is not reported as format 4 compression.
+                    if codec != 12 {
+                        let (iterations, elapsed) = measure(
+                            || {
+                                black_box(
+                                    encode(codec, black_box(&input)).expect("validated encoder"),
+                                );
+                            },
+                            budget,
+                        );
+                        report(
+                            name,
+                            dataset,
+                            size,
+                            encoded.len(),
+                            "compress",
+                            sample,
+                            iterations,
+                            elapsed,
+                        );
+                    }
                     let (iterations, elapsed) = measure(
                         || {
                             decode(codec, black_box(&encoded), black_box(&mut output))
@@ -172,7 +212,15 @@ fn main() -> Result<(), Box<dyn Error>> {
                     );
                     report(
                         name,
-                        dataset,
+                        if codec == 12 && size > 65536 {
+                            match dataset {
+                                "repeat" => "repeat-literal-blocks",
+                                "pattern" => "pattern-literal-blocks",
+                                _ => "random-literal-blocks",
+                            }
+                        } else {
+                            dataset
+                        },
                         size,
                         encoded.len(),
                         "decompress",

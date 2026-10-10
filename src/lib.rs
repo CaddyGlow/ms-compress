@@ -44,7 +44,9 @@ pub mod lzx_encode;
 pub mod quantum;
 pub mod xpress_encode;
 
-pub use xpress::{decompress_xpress, decompress_xpress_windows};
+/// A malformed Windows compression buffer or insufficient output capacity.
+pub use nt_common::Error as BufferError;
+pub use xpress::{decompress_xpress, decompress_xpress_huffman_buffer, decompress_xpress_windows};
 
 // Callers validate the match's distance and output extent before entering here.
 fn copy_lz_match(output: &mut [u8], position: usize, offset: usize, length: usize) {
