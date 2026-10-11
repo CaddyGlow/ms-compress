@@ -14,7 +14,7 @@ categories = ["compression", "no-std"]
 exclude = [
     "tests/differential.rs", "tests/lzms_differential.rs", "tests/lzx_differential.rs",
     "tests/fixtures/xpress-oracle.wxp", "tests/fixtures/lzms-oracle.wlm", "tests/fixtures/lzx-oracle.bin",
-    "tests/fixtures/*-libfuzzer", "fuzz/**", "docs/**", ".github/**", "scripts/**",
+    "tests/fixtures/*-libfuzzer", "fuzz/**", "benches/zlib-comparison/**", "docs/**", ".github/**", "scripts/**",
 ]
 
 [features]
@@ -54,7 +54,7 @@ name = "rtl_codecs"
 harness = false
 
 [workspace]
-exclude = ["fuzz"]
+exclude = ["fuzz", "benches/zlib-comparison"]
 resolver = "3"
 
 [profile.release]

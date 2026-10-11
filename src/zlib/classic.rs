@@ -1,4 +1,4 @@
-//! Byte-exact safe-Rust port of classic zlib (madler/zlib 1.3.x) compression for exactly one
+//! Byte-exact safe-Rust port of classic zlib (madler/zlib 1.3.x) compression. The existing gzip entry point uses
 //! configuration: `deflateInit2(level 6, Z_DEFLATED, 15, memLevel 8, Z_DEFAULT_STRATEGY)` followed
 //! by a single `deflate(Z_FINISH)` over a whole in-memory buffer.
 //!
@@ -7,16 +7,15 @@
 //! decision matches the C implementation. Microsoft Defender VDM containers were produced with
 //! this exact encoder, and recompressing their payload reproduces them bit for bit.
 //! Adapted from windows-mpsp/src/zlib_deflate.rs: scratch and output storage are
-//! borrowed from the caller, and the public entry point writes a gzip wrapper.
+//! borrowed from the caller. A separate raw level-one entry point uses the classic
+//! fast matcher, memory level nine, and 32 KiB input submissions.
 
 use std::sync::OnceLock;
 
 const W_SIZE: usize = 1 << 15;
 const W_MASK: usize = W_SIZE - 1;
 const WINDOW_SIZE: usize = 2 * W_SIZE;
-const HASH_SIZE: usize = 1 << 15;
-const HASH_MASK: u32 = (HASH_SIZE as u32) - 1;
-const HASH_SHIFT: u32 = 5;
+
 const MIN_MATCH: usize = 3;
 const MAX_MATCH: usize = 258;
 const MIN_LOOKAHEAD: usize = MAX_MATCH + MIN_MATCH + 1;
@@ -24,13 +23,30 @@ const MAX_DIST: usize = W_SIZE - MIN_LOOKAHEAD;
 const TOO_FAR: usize = 4096;
 
 // Level 6 configuration_table entry.
-const GOOD_LENGTH: usize = 8;
-const MAX_LAZY: usize = 16;
-const NICE_LENGTH: usize = 128;
-const MAX_CHAIN: usize = 128;
+#[derive(Clone, Copy)]
+struct Parameters {
+    hash_bits: u32,
+    good_length: usize,
+    max_lazy: usize,
+    nice_length: usize,
+    max_chain: usize,
+}
+const LEVEL6: Parameters = Parameters {
+    hash_bits: 15,
+    good_length: 8,
+    max_lazy: 16,
+    nice_length: 128,
+    max_chain: 128,
+};
+const LEVEL1: Parameters = Parameters {
+    hash_bits: 16,
+    good_length: 4,
+    max_lazy: 4,
+    nice_length: 8,
+    max_chain: 4,
+};
 
 const LIT_BUFSIZE: usize = 1 << 14;
-const SYM_END: usize = LIT_BUFSIZE - 1;
 
 const LENGTH_CODES: usize = 29;
 const LITERALS: usize = 256;
@@ -472,7 +488,7 @@ impl<'w> Trees<'w> {
             },
             l_max: 0,
             d_max: 0,
-            d_buf: workspace.take(LIT_BUFSIZE),
+            d_buf: workspace.take(literals.len()),
             l_buf: literals,
             sym_next: 0,
         };
@@ -504,7 +520,7 @@ impl<'w> Trees<'w> {
             self.l.fc[t.length_code[lc] as usize + LITERALS + 1] += 1;
             self.d.fc[d_code(t, dd)] += 1;
         }
-        self.sym_next == SYM_END
+        self.sym_next == self.l_buf.len() - 1
     }
 
     fn scan_tree(bl: &mut Tree, tree: &mut Tree, max_code: usize) {
@@ -745,6 +761,8 @@ fn common_prefix(a: &[u8], b: &[u8]) -> usize {
 
 struct Deflate<'a, 'w, 'o> {
     input: &'a [u8],
+    parameters: Parameters,
+    available_end: usize,
     in_pos: usize,
     window: &'w mut [u8],
     prev: &'w mut [u16],
@@ -770,13 +788,16 @@ impl<'a, 'w, 'o> Deflate<'a, 'w, 'o> {
         window: &'w mut [u8],
         workspace: &mut Words<'w>,
         literals: &'w mut [u8],
+        parameters: Parameters,
     ) -> Self {
         Self {
             input,
+            parameters,
+            available_end: input.len(),
             in_pos: 0,
             window,
             prev: workspace.take(W_SIZE),
-            head: workspace.take(HASH_SIZE),
+            head: workspace.take(1 << parameters.hash_bits),
             ins_h: 0,
             strstart: 0,
             block_start: 0,
@@ -801,13 +822,14 @@ impl<'a, 'w, 'o> Deflate<'a, 'w, 'o> {
     }
 
     #[inline]
-    fn update_hash(h: u32, c: u8) -> u32 {
-        ((h << HASH_SHIFT) ^ u32::from(c)) & HASH_MASK
+    fn update_hash(&self, h: u32, c: u8) -> u32 {
+        ((h << self.parameters.hash_bits.div_ceil(3)) ^ u32::from(c))
+            & ((1 << self.parameters.hash_bits) - 1)
     }
 
     #[inline]
     fn insert_string(&mut self, s: usize) -> usize {
-        self.ins_h = Self::update_hash(self.ins_h, self.window[s + MIN_MATCH - 1]);
+        self.ins_h = self.update_hash(self.ins_h, self.window[s + MIN_MATCH - 1]);
         let h = self.head[self.ins_h as usize];
         self.prev[s & W_MASK] = h;
         self.head[self.ins_h as usize] = s as u16;
@@ -838,7 +860,7 @@ impl<'a, 'w, 'o> Deflate<'a, 'w, 'o> {
                 self.slide_hash();
                 more += W_SIZE;
             }
-            let avail = self.input.len() - self.in_pos;
+            let avail = self.available_end - self.in_pos;
             if avail == 0 {
                 break;
             }
@@ -851,9 +873,9 @@ impl<'a, 'w, 'o> Deflate<'a, 'w, 'o> {
             if self.lookahead + self.insert >= MIN_MATCH {
                 let mut str = self.strstart - self.insert;
                 self.ins_h = u32::from(self.window[str]);
-                self.ins_h = Self::update_hash(self.ins_h, self.window[str + 1]);
+                self.ins_h = self.update_hash(self.ins_h, self.window[str + 1]);
                 while self.insert > 0 {
-                    self.ins_h = Self::update_hash(self.ins_h, self.window[str + MIN_MATCH - 1]);
+                    self.ins_h = self.update_hash(self.ins_h, self.window[str + MIN_MATCH - 1]);
                     self.prev[str & W_MASK] = self.head[self.ins_h as usize];
                     self.head[self.ins_h as usize] = str as u16;
                     str += 1;
@@ -863,22 +885,22 @@ impl<'a, 'w, 'o> Deflate<'a, 'w, 'o> {
                     }
                 }
             }
-            if !(self.lookahead < MIN_LOOKAHEAD && self.in_pos != self.input.len()) {
+            if !(self.lookahead < MIN_LOOKAHEAD && self.in_pos != self.available_end) {
                 break;
             }
         }
     }
 
     fn longest_match(&mut self, mut cur_match: usize) -> usize {
-        let mut chain_length = MAX_CHAIN;
+        let mut chain_length = self.parameters.max_chain;
         let strstart = self.strstart;
         let mut best_len = self.prev_length;
-        let mut nice_match = NICE_LENGTH;
+        let mut nice_match = self.parameters.nice_length;
         let limit = strstart.saturating_sub(MAX_DIST);
         let w = &self.window[..];
         let mut scan_end1 = w[strstart + best_len - 1];
         let mut scan_end = w[strstart + best_len];
-        if self.prev_length >= GOOD_LENGTH {
+        if self.prev_length >= self.parameters.good_length {
             chain_length >>= 2;
         }
         if nice_match > self.lookahead {
@@ -934,6 +956,65 @@ impl<'a, 'w, 'o> Deflate<'a, 'w, 'o> {
         self.block_start = self.strstart as i64;
     }
 
+    /// Classic level-one fast matcher with successive 32 KiB input submissions.
+    fn deflate_fast(&mut self) {
+        self.available_end = self.input.len().min(32768);
+        loop {
+            if self.lookahead < MIN_LOOKAHEAD {
+                self.fill_window();
+                if self.lookahead < MIN_LOOKAHEAD && self.available_end < self.input.len() {
+                    self.available_end = (self.available_end + 32768).min(self.input.len());
+                    continue;
+                }
+                if self.lookahead == 0 {
+                    break;
+                }
+            }
+            let hash_head = if self.lookahead >= MIN_MATCH {
+                self.insert_string(self.strstart)
+            } else {
+                0
+            };
+            if hash_head != 0 && self.strstart.wrapping_sub(hash_head) <= MAX_DIST {
+                self.match_length = self.longest_match(hash_head);
+            }
+            let full;
+            if self.match_length >= MIN_MATCH {
+                full = self.trees.tally(
+                    self.strstart - self.match_start,
+                    self.match_length - MIN_MATCH,
+                );
+                self.lookahead -= self.match_length;
+                if self.match_length <= self.parameters.max_lazy && self.lookahead >= MIN_MATCH {
+                    self.match_length -= 1;
+                    loop {
+                        self.strstart += 1;
+                        self.insert_string(self.strstart);
+                        self.match_length -= 1;
+                        if self.match_length == 0 {
+                            break;
+                        }
+                    }
+                    self.strstart += 1;
+                } else {
+                    self.strstart += self.match_length;
+                    self.match_length = 0;
+                    self.ins_h = u32::from(self.window[self.strstart]);
+                    self.ins_h = self.update_hash(self.ins_h, self.window[self.strstart + 1]);
+                }
+            } else {
+                full = self.trees.tally(0, usize::from(self.window[self.strstart]));
+                self.lookahead -= 1;
+                self.strstart += 1;
+            }
+            if full {
+                self.flush_block(false);
+            }
+        }
+        self.insert = self.strstart.min(MIN_MATCH - 1);
+        self.flush_block(true);
+    }
+
     /// `deflate_slow(s, Z_FINISH)`.
     fn deflate_slow(&mut self) {
         loop {
@@ -952,7 +1033,7 @@ impl<'a, 'w, 'o> Deflate<'a, 'w, 'o> {
             self.match_length = MIN_MATCH - 1;
 
             if hash_head != 0
-                && self.prev_length < MAX_LAZY
+                && self.prev_length < self.parameters.max_lazy
                 && self.strstart.wrapping_sub(hash_head) <= MAX_DIST
             {
                 self.match_length = self.longest_match(hash_head);
@@ -1036,6 +1117,7 @@ pub fn gzip_level6(input: &[u8], output: &mut [u8], scratch: &mut [u8]) -> Optio
             window,
             &mut workspace,
             literals,
+            LEVEL6,
         );
         compressor.deflate_slow();
         if compressor.bits.out.failed {
@@ -1047,4 +1129,22 @@ pub fn gzip_level6(input: &[u8], output: &mut [u8], scratch: &mut [u8]) -> Optio
     output[trailer..trailer + 4].copy_from_slice(&super::crc32::crc32(0, input).to_le_bytes());
     output[trailer + 4..trailer + 8].copy_from_slice(&(input.len() as u32).to_le_bytes());
     Some(trailer + 8)
+}
+
+/// Write raw classic zlib level 1, window 15, memory level 9, default strategy.
+/// Input is submitted in 32 KiB chunks, followed by finish. Caller-owned scratch
+/// must contain at least 400,000 bytes; insufficient output returns `None`.
+pub fn raw_level1(input: &[u8], output: &mut [u8], scratch: &mut [u8]) -> Option<usize> {
+    if input.len() > u32::MAX as usize || scratch.len() < 400000 {
+        return None;
+    }
+    scratch.fill(0);
+    let (window, rest) = scratch.split_at_mut(WINDOW_SIZE);
+    let (literals, rest) = rest.split_at_mut(32768);
+    // SAFETY: u16 permits every bit pattern and the exclusive slice is partitioned.
+    let (_, words, _) = unsafe { rest.align_to_mut::<u16>() };
+    let mut workspace = Words { bytes: words };
+    let mut compressor = Deflate::new(input, output, window, &mut workspace, literals, LEVEL1);
+    compressor.deflate_fast();
+    (!compressor.bits.out.failed).then_some(compressor.bits.out.used)
 }

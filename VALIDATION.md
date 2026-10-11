@@ -76,7 +76,28 @@ CI includes codec tests and Clippy with and without default features, plus a
 without `std`; it does not execute codecs on hardware or establish heap-free
 operation. Native Windows interoperability was not rerun for this change.
 
+## Classic zlib compatibility
+
+`tests/zlib_classic.rs` checks raw level-1 and gzip level-6 output byte for byte
+against seven [native zlib 1.3.2 fixtures](tests/fixtures/ZLIB-CLASSIC.md), covering
+empty input, lookahead, chunk and window boundaries, and mixed multi-window data.
+The raw encoder also has exact-output-capacity, one-byte-short, zero-output,
+short-scratch, unaligned minimum-scratch, guard-byte, and scratch-reuse checks.
+The native oracle is used to generate committed fixtures, not required at test
+runtime. Fixture generation and compression parameters are documented alongside
+the corpus.
+
 ## Benchmarks
+
+The separate [DEFLATE library comparison](benches/zlib-comparison/README.md)
+measures raw DEFLATE levels 1 and 6 against native zlib, miniz_oxide, and
+libdeflate, with classic `raw_level1` included at level 1. It emits compressed
+sizes and three samples per operation, and validates every encoded stream with
+all four decoders. It has its own locked dependencies and a Linux CI smoke gate.
+See its README for allocation costs, memory-level differences, and commands.
+The [2026-10-10 comparison](docs/benchmarks/zlib-comparison-2026-10-10.md)
+records the environment, summary tables, and all 1,620 measurement rows.
+
 
 ```sh
 cargo bench -p ms-compress --bench codecs --locked > target/ms-compress-bench.csv

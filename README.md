@@ -125,6 +125,14 @@ compression and decompression with ntdll's LZNT1, plain XPRESS, and XPRESS
 Huffman implementations. See [VALIDATION.md](VALIDATION.md) for timing scope,
 workloads, and format selection.
 
+The [DEFLATE library comparison](benches/zlib-comparison/README.md) benchmarks
+ms-compress and its classic level-1 encoder against native zlib, miniz_oxide,
+and libdeflate, including cross-library decoding and compressed sizes:
+
+```sh
+cargo bench --manifest-path benches/zlib-comparison/Cargo.toml --bench zlib --locked > zlib-comparison.csv
+```
+
 For a build optimized for the machine that runs Cargo, enable the compiler's
 host CPU selection:
 

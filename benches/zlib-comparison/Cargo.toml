@@ -1,0 +1,21 @@
+[package]
+name = "ms-compress-zlib-comparison"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+ms-compress = { path = "../.." }
+# Explicit C backend: enabling flate2's defaults would select a different backend.
+flate2 = { version = "1.1.10", default-features = false, features = ["zlib"] }
+miniz_oxide = "0.9.1"
+libdeflater = "1.26.1"
+
+[[bench]]
+name = "zlib"
+path = "comparison.rs"
+harness = false
+
+[profile.release]
+lto = "thin"
+strip = true

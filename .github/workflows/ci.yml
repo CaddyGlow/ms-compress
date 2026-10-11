@@ -51,6 +51,14 @@ jobs:
         env:
           MS_COMPRESS_BENCH_MS: '10'
         run: cargo bench -p ms-compress --locked --bench codecs
+      - name: DEFLATE library comparison smoke
+        if: runner.os == 'Linux'
+        env:
+          MS_COMPRESS_BENCH_MS: '1'
+        run: |
+          cargo fmt --manifest-path benches/zlib-comparison/Cargo.toml -- --check
+          cargo clippy --manifest-path benches/zlib-comparison/Cargo.toml --all-targets --locked -- -D warnings
+          cargo bench --manifest-path benches/zlib-comparison/Cargo.toml --bench zlib --locked
       - name: Fuzz harness regression tests
         if: runner.os == 'Linux'
         run: cargo test --manifest-path fuzz/Cargo.toml --locked
