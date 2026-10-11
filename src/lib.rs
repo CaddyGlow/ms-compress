@@ -3,8 +3,8 @@
 //! XPRESS here means the LZ77+Huffman variant used in WIM, not plain XPRESS.
 //! The caller supplies the exact decompressed block size through the output slice.
 //!
-//! Disable the default `std` feature for `no_std` with `alloc`. All codecs
-//! remain available; heap-backed storage still requires a global allocator.
+//! Disable default features for `no_std` with `alloc`, then enable the desired
+//! codec features (or `all-codecs`). Heap-backed storage requires a global allocator.
 //! The optional `cli` feature enables `std`.
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(
@@ -16,6 +16,32 @@
 
 extern crate alloc;
 
+// Reuse the vendored SIMD helpers without enabling the DEFLATE codec.
+#[cfg(any(
+    feature = "lznt1",
+    feature = "xpress",
+    feature = "lzx",
+    feature = "lzms",
+    feature = "quantum",
+    feature = "deflate"
+))]
+#[path = "zlib/cpu_features.rs"]
+#[allow(missing_docs)]
+mod cpu_features;
+
+#[cfg(any(
+    feature = "lznt1",
+    feature = "xpress",
+    feature = "lzx",
+    feature = "lzms",
+    feature = "quantum",
+    feature = "deflate"
+))]
+#[path = "zlib/deflate/compare256.rs"]
+// Upstream includes helpers used only by DEFLATE and architecture-specific paths.
+#[allow(unsafe_code, missing_docs, dead_code)]
+pub(crate) mod match_compare;
+
 /// Version of this library, as declared in `Cargo.toml`.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -25,30 +51,51 @@ extern crate std;
 /// DEFLATE, zlib, gzip, and checksum APIs adapted from zlib-rs.
 // Upstream uses unsafe aligned storage and SIMD behind a safe public API.
 #[allow(unsafe_code, missing_docs)]
+#[cfg(feature = "deflate")]
 pub mod zlib;
 
 /// LZMA1 and LZMA2 codecs using Rust global allocation.
 #[allow(unsafe_code, missing_docs)]
+#[cfg(feature = "lzma")]
 pub mod lzma;
 
+#[cfg(any(feature = "xpress", feature = "lzx", feature = "lzms"))]
 pub mod context;
+#[cfg(feature = "lznt1")]
 pub mod lznt1;
+#[cfg(any(feature = "xpress", feature = "lzx", feature = "lzms"))]
 mod memory;
+#[cfg(any(feature = "lznt1", feature = "xpress"))]
 mod nt_common;
+#[cfg(feature = "xpress")]
 mod xpress;
+#[cfg(feature = "xpress")]
 pub mod xpress_plain;
 
+#[cfg(feature = "lzms")]
 pub mod lzms;
+#[cfg(feature = "lzx")]
 pub mod lzx;
+#[cfg(feature = "lzx")]
 pub mod lzx_encode;
+#[cfg(feature = "quantum")]
 pub mod quantum;
+#[cfg(feature = "xpress")]
 pub mod xpress_encode;
 
 /// A malformed Windows compression buffer or insufficient output capacity.
+#[cfg(any(feature = "lznt1", feature = "xpress"))]
 pub use nt_common::Error as BufferError;
+#[cfg(feature = "xpress")]
 pub use xpress::{decompress_xpress, decompress_xpress_huffman_buffer, decompress_xpress_windows};
 
 // Callers validate the match's distance and output extent before entering here.
+#[cfg(any(
+    feature = "lznt1",
+    feature = "xpress",
+    feature = "lzx",
+    feature = "lzms"
+))]
 fn copy_lz_match(output: &mut [u8], position: usize, offset: usize, length: usize) {
     if length <= offset {
         output.copy_within(position - offset..position - offset + length, position);
@@ -68,6 +115,7 @@ fn copy_lz_match(output: &mut [u8], position: usize, offset: usize, length: usiz
 
 /// A malformed XPRESS Huffman block.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg(feature = "xpress")]
 pub enum DecodeError {
     /// The 256-byte Huffman length header is incomplete.
     HeaderTooShort,
@@ -89,6 +137,7 @@ pub enum DecodeError {
     },
 }
 
+#[cfg(feature = "xpress")]
 impl core::fmt::Display for DecodeError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match *self {
@@ -110,12 +159,20 @@ impl core::fmt::Display for DecodeError {
     }
 }
 
+#[cfg(feature = "xpress")]
 impl core::error::Error for DecodeError {}
 
 /// Zstandard frame encoding and decoding from the patched MIT-licensed ruzstd fork.
+#[cfg(feature = "zstd")]
 pub use ruzstd as zstd;
 
 #[cfg(test)]
+#[cfg(any(
+    feature = "lznt1",
+    feature = "xpress",
+    feature = "lzx",
+    feature = "lzms"
+))]
 mod match_copy_tests {
     use alloc::vec;
     #[test]

@@ -1,3 +1,5 @@
+#![cfg(all(feature = "lznt1", feature = "xpress"))]
+
 //! Native Windows interoperability gate; production codecs never call ntdll.
 #![cfg(windows)]
 

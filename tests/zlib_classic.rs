@@ -1,3 +1,4 @@
+#![cfg(feature = "deflate")]
 #![cfg(feature = "std")]
 use ms_compress::zlib::{InflateConfig, ReturnCode, classic::gzip_level6, decompress_slice};
 

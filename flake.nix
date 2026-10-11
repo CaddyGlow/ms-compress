@@ -33,6 +33,7 @@
             targets = [
               "x86_64-pc-windows-msvc"
               "i686-pc-windows-msvc"
+              "thumbv7em-none-eabi"
             ];
           };
           nightly = pkgs.rust-bin.selectLatestNightlyWith (

@@ -1,6 +1,6 @@
 [package]
 name = "ms-compress"
-version = "0.1.3"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.99"
 license = "LGPL-2.1-only AND LGPL-2.1-or-later AND Zlib AND Apache-2.0 AND MIT"
@@ -18,16 +18,26 @@ exclude = [
 ]
 
 [features]
-default = ["std", "lzma-optimization"]
-std = ["ruzstd/std"]
-lzma-optimization = [] # Optimized LZMA internals; works with no_std.
+default = ["std", "all-codecs", "lzma-optimization"]
+all-codecs = ["microsoft-codecs", "deflate", "lzma", "zstd"]
+microsoft-codecs = ["lznt1", "xpress", "lzx", "lzms", "quantum"]
+lznt1 = []
+xpress = [] # Plain XPRESS and XPRESS Huffman (Windows and WIM).
+lzx = [] # WIM LZX, CAB LZX, and LZX Delta.
+lzms = []
+quantum = []
+deflate = [] # DEFLATE, zlib, gzip, CRC32, and Adler32.
+lzma = [] # LZMA1 and raw LZMA2.
+zstd = ["dep:ruzstd"]
+std = ["ruzstd?/std"]
+lzma-optimization = ["lzma"] # Optimized LZMA internals; works with no_std.
 vpclmulqdq = [] # AVX-512 CRC32 acceleration; stable since Rust 1.89.
 avx512 = ["vpclmulqdq"] # AVX-512 checksum acceleration; stable since Rust 1.89.
 lsx = [] # LoongArch LSX acceleration; intrinsics require nightly Rust.
-cli = ["std", "dep:clap", "dep:tempfile"]
+cli = ["std", "lznt1", "xpress", "dep:clap", "dep:tempfile"]
 
 [dependencies]
-ruzstd = { package = "ms-compress-ruzstd", version = "=0.9.1", default-features = false, features = ["hash"] }
+ruzstd = { package = "ms-compress-ruzstd", version = "=0.9.1", optional = true, default-features = false, features = ["hash"] }
 clap = { version = "4.5", features = ["derive"], optional = true }
 tempfile = { version = "3.23", optional = true }
 
@@ -48,10 +58,12 @@ unsafe_op_in_unsafe_fn = "deny"
 [[bench]]
 name = "codecs"
 harness = false
+required-features = ["lznt1", "xpress", "lzx", "lzms", "quantum", "deflate", "lzma"]
 
 [[bench]]
 name = "rtl_codecs"
 harness = false
+required-features = ["lznt1", "xpress"]
 
 [workspace]
 exclude = ["fuzz", "benches/zlib-comparison"]
@@ -64,3 +76,19 @@ strip = true
 [lints.clippy]
 # Preserve established iterator/remainder handling during the Rust 1.99 upgrade.
 chunks_exact_to_as_chunks = "allow"
+
+[[example]]
+name = "xpress_encode"
+required-features = ["xpress"]
+
+[[example]]
+name = "encode_lzms"
+required-features = ["lzms"]
+
+[[example]]
+name = "encode_lzx"
+required-features = ["lzx"]
+
+[[example]]
+name = "context_probe"
+required-features = ["xpress", "lzx", "lzms"]

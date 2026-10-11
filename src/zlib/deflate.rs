@@ -25,7 +25,7 @@ use self::{
 };
 
 mod algorithm;
-pub(super) mod compare256;
+pub(super) use crate::match_compare as compare256;
 mod hash_calc;
 mod longest_match;
 mod pending;

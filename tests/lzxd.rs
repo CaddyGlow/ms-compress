@@ -1,3 +1,5 @@
+#![cfg(feature = "lzx")]
+
 //! Fixtures independently constructed from MS-PATCH sections 2 and 3.
 use ms_compress::lzx::{LzxDeltaDecoder, LzxDeltaError, decompress_lzxd};
 

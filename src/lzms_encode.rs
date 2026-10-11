@@ -376,7 +376,7 @@ impl LzmsCompressor {
                         let limit = data.len() - pos;
                         let left = &data[at..at + limit];
                         let right = &data[pos..];
-                        let len = crate::zlib::common_prefix(left, right);
+                        let len = crate::match_compare::common_prefix(left, right);
                         if len > best {
                             best = len;
                             distance = pos - at;

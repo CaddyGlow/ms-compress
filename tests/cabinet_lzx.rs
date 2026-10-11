@@ -1,3 +1,5 @@
+#![cfg(feature = "lzx")]
+
 //! Cabinet framing gates independent of the CAB directory parser.
 use ms_compress::lzx::{CabinetLzxDecoder, CabinetLzxError};
 

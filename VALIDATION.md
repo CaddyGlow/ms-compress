@@ -1,5 +1,31 @@
 # Codec validation
 
+## Selective codec features (2026-10-11)
+
+Individual codec families are feature-gated; defaults retain the full codec set.
+`all-codecs` restores that set when default features are disabled. The shared
+SIMD comparison and CPU-detection sources compile independently of DEFLATE,
+and `zstd` alone controls the optional pinned Zstandard dependency. WIM contexts
+support individually selected codecs and reject disabled numeric codec IDs.
+
+Local Linux validation passed all-feature tests (293 passed, one ignored),
+strict all-target/all-feature Clippy, no-feature tests, full `no_std` tests with
+`all-codecs` (267 passed), and the five standalone fuzz regression tests, with
+locked dependencies. Each individual codec, `microsoft-codecs`, `std` alone,
+and the minimal `cli` selection passed tests and strict all-target Clippy;
+Clippy also passed with `std` added to each selection. A new context regression
+checks reconstruction and disabled-codec rejection in these selective builds.
+Full `no_std` tests and strict Clippy also passed with
+`all-codecs,avx512,lsx,lzma-optimization` enabled.
+
+Embedded compilation passed for `thumbv7em-none-eabi` with no codecs, every
+individual codec, `all-codecs`, and `all-codecs,avx512,lsx,lzma-optimization`.
+The pinned Nix shell now includes that target. Formatting and CI workflow
+linting passed. Normal-dependency trees were empty for no features, `std`
+alone, and `microsoft-codecs`; `zstd` selected only `ms-compress-ruzstd` 0.9.1.
+CI retains full codec checks and adds selective host and embedded checks.
+Native Windows and fresh external-oracle interoperability gates were not run.
+
 ## Published Zstandard dependency (2026-10-07)
 
 The patched fork is published as `ms-compress-ruzstd` 0.9.1, from fork commit

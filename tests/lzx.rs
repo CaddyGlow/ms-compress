@@ -1,3 +1,5 @@
+#![cfg(feature = "lzx")]
+
 use ms_compress::lzx::{LzxError, decompress_lzx};
 
 struct Bits(Vec<bool>);

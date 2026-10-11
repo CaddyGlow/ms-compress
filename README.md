@@ -3,7 +3,9 @@
 Pure Rust Microsoft compression codecs shared by WIM, CAB, Windows buffer,
 and delta consumers, with DEFLATE, zlib, gzip, LZMA1, LZMA2, and Zstandard support. The Microsoft codecs
 deny unsafe code; upstream SIMD and allocation code is confined to the vendored
-`zlib` and `lzma` modules. Its library uses `core` and `alloc` directly and depends on the patched `ms-compress-ruzstd` crate pinned to version 0.9.1.
+`zlib` and `lzma` sources, including shared SIMD helpers. Its library uses `core`
+and `alloc` directly. The optional `zstd` feature uses the patched
+`ms-compress-ruzstd` crate pinned to version 0.9.1.
 Licenses and codec attribution notices are retained alongside the implementation.
 
 Select the API for the encoded format:
@@ -49,12 +51,51 @@ For Windows buffer validation details, see
 See [VALIDATION.md](VALIDATION.md) for test and benchmark coverage and
 [fuzz/README.md](fuzz/README.md) for the crate-owned fuzz runners and replay.
 
-## `no_std` support
+## Cargo features
 
-Disable default features to use every codec with `core` and `alloc`:
+Defaults enable `std`, `all-codecs`, and `lzma-optimization`, preserving the full
+codec API. Disable default features to select individual codec families:
 
 ```toml
-ms-compress = { path = "path/to/ms-compress", default-features = false }
+ms-compress = { path = "path/to/ms-compress", default-features = false, features = ["lznt1", "xpress"] }
+```
+
+| Feature | Included APIs |
+| --- | --- |
+| `lznt1` | LZNT1 Windows buffers and storage units |
+| `xpress` | Plain XPRESS and Huffman XPRESS, Windows and WIM |
+| `lzx` | WIM LZX, CAB LZX, and LZX Delta |
+| `lzms` | LZMS encoding and decoding |
+| `quantum` | CAB Quantum encoding and decoding |
+| `deflate` | `zlib` module: DEFLATE, zlib, gzip, CRC32, Adler32 |
+| `lzma` | LZMA1 and raw LZMA2 |
+| `zstd` | Zstandard, including dictionaries and checksums |
+| `microsoft-codecs` | `lznt1`, `xpress`, `lzx`, `lzms`, `quantum` |
+| `all-codecs` | `microsoft-codecs`, `deflate`, `lzma`, `zstd` |
+| `std` | Standard-library integration for enabled codecs; enables no codecs itself |
+| `cli` | Command-line tool; enables `std`, `lznt1`, and `xpress` |
+| `lzma-optimization` | Enables `lzma` and its optimized internals |
+| `vpclmulqdq`, `avx512`, `lsx` | Acceleration options for enabled codecs; see CPU acceleration below |
+
+Codec features include both encoding and decoding where implemented. Features
+are additive; they do not force other codec families or `std`. Microsoft codecs
+share SIMD helpers without compiling DEFLATE. `std` alone does not pull in the
+Zstandard dependency.
+
+The `context` module is available with any of `xpress`, `lzx`, or `lzms` and
+contains only enabled codec variants. WIM IDs remain 1, 2, and 3 respectively;
+requesting a disabled codec returns `ContextError::InvalidCompressionType`.
+
+**Migration:** `default-features = false` now selects no codecs. Existing
+`no_std` consumers should add `features = ["all-codecs"]` to retain their former
+API, or select just the codecs they use. Default-feature consumers need no changes.
+
+## `no_std` support
+
+Disable default features and enable `all-codecs` to use every codec with `core` and `alloc`:
+
+```toml
+ms-compress = { path = "path/to/ms-compress", default-features = false, features = ["all-codecs"] }
 ```
 
 A global allocator is required for heap-backed APIs, including returned `Vec`s
@@ -76,11 +117,12 @@ been removed; use the ordinary `new` constructors. WIM's registered C allocators
 no longer control codec scratch storage.
 
 ```sh
-cargo test -p ms-compress --no-default-features --locked
-cargo check -p ms-compress --lib --no-default-features --target thumbv7em-none-eabi --locked
+cargo test -p ms-compress --no-default-features --features all-codecs --locked
+cargo check -p ms-compress --lib --no-default-features --features all-codecs --target thumbv7em-none-eabi --locked
 ```
 
-The second command requires `rustup target add thumbv7em-none-eabi`.
+The Nix development shell includes this embedded target. With rustup, install
+it using `rustup target add thumbv7em-none-eabi`.
 
 ## Optional CLI
 
@@ -202,7 +244,7 @@ assert_eq!(output, b"hello");
 
 `lzma-optimization` is enabled by default. It enables upstream optimized range
 coding and match-finder paths, with runtime CPU detection under `std` and static
-CPU selection under `no_std`. Disable default features for the safe Rust LZMA
+CPU selection under `no_std`. Disable default features and enable `lzma` for the safe Rust LZMA
 implementation, or explicitly enable `lzma-optimization` for optimized `no_std`.
 All paths use Rust global allocation; low-level writer options control workspace
 size and can require much more memory than the bounded slice helpers.

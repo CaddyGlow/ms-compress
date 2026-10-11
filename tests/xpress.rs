@@ -1,3 +1,5 @@
+#![cfg(feature = "xpress")]
+
 use ms_compress::{DecodeError, decompress_xpress};
 
 fn header(lengths: &[(usize, u8)]) -> Vec<u8> {

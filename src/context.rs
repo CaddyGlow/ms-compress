@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: LGPL-2.1-or-later
 //! Safe codec configuration and reusable decoding contexts.
 //!
+//! Available with any of `xpress`, `lzx`, or `lzms`. Disabled codecs are
+//! rejected with [`ContextError::InvalidCompressionType`].
+//!
 //! Configuration follows wimlib's compress.c/decompress.c validation rules.
 //! Defaults are explicit values rather than process-global mutable state.
 //! Decompressors allocate all scratch at creation and reuse it without
@@ -16,33 +19,45 @@ pub const DESTRUCTIVE: u32 = 0x8000_0000;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Codec {
     /// WIM XPRESS Huffman.
+    #[cfg(feature = "xpress")]
     Xpress,
     /// WIM LZX.
+    #[cfg(feature = "lzx")]
     Lzx,
     /// WIM LZMS.
+    #[cfg(feature = "lzms")]
     Lzms,
 }
 impl Codec {
-    /// Resolve the original numeric compression type.
+    /// Resolve an enabled codec from the original numeric compression type.
     pub fn from_wimlib(value: i32) -> Result<Self, ContextError> {
         match value {
+            #[cfg(feature = "xpress")]
             1 => Ok(Self::Xpress),
+            #[cfg(feature = "lzx")]
             2 => Ok(Self::Lzx),
+            #[cfg(feature = "lzms")]
             3 => Ok(Self::Lzms),
             _ => Err(ContextError::InvalidCompressionType),
         }
     }
     fn index(self) -> usize {
         match self {
+            #[cfg(feature = "xpress")]
             Self::Xpress => 0,
+            #[cfg(feature = "lzx")]
             Self::Lzx => 1,
+            #[cfg(feature = "lzms")]
             Self::Lzms => 2,
         }
     }
     fn maximum(self) -> usize {
         match self {
+            #[cfg(feature = "xpress")]
             Self::Xpress => 65536,
+            #[cfg(feature = "lzx")]
             Self::Lzx => 1 << 21,
+            #[cfg(feature = "lzms")]
             Self::Lzms => 1 << 30,
         }
     }
@@ -51,7 +66,7 @@ impl Codec {
 /// Factory errors and decode outcomes, independent of C pointer ownership.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ContextError {
-    /// Numeric codec is not XPRESS, LZX, or LZMS.
+    /// Numeric codec is unknown or its Cargo feature is disabled.
     InvalidCompressionType,
     /// Maximum size or compression level is invalid.
     InvalidParameter,
@@ -143,8 +158,11 @@ pub struct CompressionConfig {
 pub struct Decompressor {
     codec: Codec,
     maximum: usize,
+    #[cfg(feature = "lzms")]
     lzms: Option<crate::lzms::LzmsDecoder>,
+    #[cfg(feature = "xpress")]
     xpress: Option<crate::xpress::XpressDecoder>,
+    #[cfg(feature = "lzx")]
     lzx: Option<crate::lzx::LzxDecoder>,
 }
 impl Decompressor {
@@ -155,6 +173,7 @@ impl Decompressor {
         if maximum == 0 || maximum > codec.maximum() {
             return Err(ContextError::InvalidParameter);
         }
+        #[cfg(feature = "lzms")]
         let lzms = if codec == Codec::Lzms {
             Some(crate::lzms::LzmsDecoder::new().map_err(|_| ContextError::OutOfMemory)?)
         } else {
@@ -163,12 +182,15 @@ impl Decompressor {
         Ok(Self {
             codec,
             maximum,
+            #[cfg(feature = "lzms")]
             lzms,
+            #[cfg(feature = "xpress")]
             xpress: if codec == Codec::Xpress {
                 Some(crate::xpress::XpressDecoder::new().map_err(|_| ContextError::OutOfMemory)?)
             } else {
                 None
             },
+            #[cfg(feature = "lzx")]
             lzx: if codec == Codec::Lzx {
                 Some(crate::lzx::LzxDecoder::new().map_err(|_| ContextError::OutOfMemory)?)
             } else {
@@ -182,18 +204,21 @@ impl Decompressor {
             return Err(ContextError::OutputExceedsMaximum);
         }
         match self.codec {
+            #[cfg(feature = "xpress")]
             Codec::Xpress => self
                 .xpress
                 .as_mut()
                 .ok_or(ContextError::InvalidParameter)?
                 .decompress(input, output)
                 .map_err(|_| ContextError::InvalidCompressedData),
+            #[cfg(feature = "lzx")]
             Codec::Lzx => self
                 .lzx
                 .as_mut()
                 .ok_or(ContextError::InvalidParameter)?
                 .decompress(input, output, self.maximum)
                 .map_err(|_| ContextError::InvalidCompressedData),
+            #[cfg(feature = "lzms")]
             Codec::Lzms => self
                 .lzms
                 .as_mut()
@@ -226,8 +251,11 @@ pub struct FixedStrategyCompressor {
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 enum CompressorWorkspace {
+    #[cfg(feature = "xpress")]
     Xpress(crate::xpress_encode::XpressCompressor),
+    #[cfg(feature = "lzx")]
     Lzx(crate::lzx_encode::LzxCompressor),
+    #[cfg(feature = "lzms")]
     Lzms(crate::lzms::encode::LzmsCompressor),
 }
 impl FixedStrategyCompressor {
@@ -242,14 +270,17 @@ impl FixedStrategyCompressor {
             return Err(ContextError::InvalidParameter);
         }
         let workspace = match codec {
+            #[cfg(feature = "xpress")]
             Codec::Xpress => CompressorWorkspace::Xpress(
                 crate::xpress_encode::XpressCompressor::new(maximum)
                     .map_err(|_| ContextError::OutOfMemory)?,
             ),
+            #[cfg(feature = "lzx")]
             Codec::Lzx => CompressorWorkspace::Lzx(
                 crate::lzx_encode::LzxCompressor::new(maximum)
                     .map_err(|_| ContextError::OutOfMemory)?,
             ),
+            #[cfg(feature = "lzms")]
             Codec::Lzms => CompressorWorkspace::Lzms(
                 crate::lzms::encode::LzmsCompressor::new(maximum)
                     .map_err(|_| ContextError::OutOfMemory)?,
@@ -287,12 +318,15 @@ impl FixedStrategyCompressor {
             return Ok(None);
         }
         match &mut self.workspace {
+            #[cfg(feature = "xpress")]
             CompressorWorkspace::Xpress(workspace) => workspace
                 .compress(input, capacity)
                 .map_err(|_| ContextError::OutOfMemory),
+            #[cfg(feature = "lzx")]
             CompressorWorkspace::Lzx(workspace) => workspace
                 .compress(input, capacity)
                 .map_err(|_| ContextError::OutOfMemory),
+            #[cfg(feature = "lzms")]
             CompressorWorkspace::Lzms(workspace) => workspace
                 .compress(input, capacity)
                 .map_err(|_| ContextError::OutOfMemory),

@@ -17,3 +17,7 @@ no_std testing and a CPU-conditional CRC panic assertion. A bounded shared
 match-prefix adapter extends SIMD comparison to the Microsoft encoders. Static
 CPU feature detection is also available without std. Public API integration
 tests and bounded fuzz harnesses live in the containing crate.
+
+The shared comparison and CPU-feature sources are compiled as private crate-level
+modules so Microsoft codec features can use them independently of DEFLATE. Their
+source locations, attribution, and original license remain here.

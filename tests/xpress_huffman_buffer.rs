@@ -1,3 +1,5 @@
+#![cfg(feature = "xpress")]
+
 use ms_compress::{BufferError as Error, decompress_xpress_huffman_buffer};
 
 // Two one-bit literal codes: A = 0, B = 1. Coding words are little endian,

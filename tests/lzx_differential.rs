@@ -1,3 +1,5 @@
+#![cfg(feature = "lzx")]
+
 use ms_compress::lzx::decompress_lzx;
 
 struct Cases<'a>(&'a [u8]);

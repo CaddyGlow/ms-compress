@@ -1,3 +1,5 @@
+#![cfg(feature = "quantum")]
+
 //! Quantum framing and malformed-input gates, independent of the CAB parser.
 use ms_compress::quantum::{QuantumDecoder, QuantumError};
 

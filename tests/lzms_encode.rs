@@ -1,3 +1,5 @@
+#![cfg(feature = "lzms")]
+
 use ms_compress::lzms::{decompress_lzms, encode::compress_lzms};
 #[test]
 fn real_matches_roundtrip_and_compress() {

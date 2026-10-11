@@ -1,3 +1,5 @@
+#![cfg(feature = "lzms")]
+
 use ms_compress::lzms::decompress_lzms;
 
 struct Cases<'a> {

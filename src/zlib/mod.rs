@@ -25,7 +25,7 @@ mod inflate;
 pub(crate) const MIN_WBITS: i32 = 8;
 pub(crate) const MAX_WBITS: i32 = 15;
 
-pub(crate) mod cpu_features;
+pub(crate) use crate::cpu_features;
 mod stable;
 mod weak_slice;
 
@@ -36,8 +36,6 @@ pub use inflate::InflateConfig;
 
 pub use deflate::{compress_bound, compress_slice};
 pub use inflate::decompress_slice;
-
-pub(crate) use deflate::compare256::common_prefix;
 
 macro_rules! traceln {
     ($($arg:tt)*) => {

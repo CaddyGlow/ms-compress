@@ -176,7 +176,7 @@ impl LzxCompressor {
                     if data[candidate..candidate + 3] != data[position..position + 3] {
                         continue;
                     }
-                    let found = 3 + crate::zlib::common_prefix(
+                    let found = 3 + crate::match_compare::common_prefix(
                         &data[candidate + 3..candidate + limit],
                         &data[position + 3..position + limit],
                     );
@@ -199,7 +199,7 @@ impl LzxCompressor {
                     if data[candidate + length.saturating_sub(1)]
                         == data[position + length.saturating_sub(1)]
                     {
-                        let found = crate::zlib::common_prefix(
+                        let found = crate::match_compare::common_prefix(
                             &data[candidate..candidate + limit],
                             &data[position..position + limit],
                         );

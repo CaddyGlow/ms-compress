@@ -1,3 +1,5 @@
+#![cfg(all(feature = "xpress", feature = "lzx", feature = "lzms"))]
+
 use ms_compress::context::{
     CompressionDefaults, ContextError, DESTRUCTIVE, Decompressor, FixedStrategyCompressor,
 };

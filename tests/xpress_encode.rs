@@ -1,3 +1,5 @@
+#![cfg(feature = "xpress")]
+
 use ms_compress::decompress_xpress;
 use ms_compress::xpress_encode::{EncodeError, compress_xpress};
 

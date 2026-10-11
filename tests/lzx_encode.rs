@@ -1,3 +1,5 @@
+#![cfg(feature = "lzx")]
+
 use ms_compress::lzx::decompress_lzx;
 use ms_compress::lzx_encode::{EncodeError, compress_lzx};
 

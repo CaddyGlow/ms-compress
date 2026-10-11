@@ -218,7 +218,7 @@ fn match_length(input: &[u8], candidate: usize, position: usize) -> usize {
     let limit = input.len() - position;
     let left = &input[candidate..candidate + limit];
     let right = &input[position..];
-    crate::zlib::common_prefix(left, right)
+    crate::match_compare::common_prefix(left, right)
 }
 
 fn parse(

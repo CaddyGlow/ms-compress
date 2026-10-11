@@ -39,14 +39,14 @@ fn has_simd_comparison() -> bool {
         )) {
             return true;
         }
-        return crate::zlib::cpu_features::is_enabled_avx2_and_bmi2();
+        return crate::cpu_features::is_enabled_avx2_and_bmi2();
     }
     #[cfg(target_arch = "aarch64")]
-    return crate::zlib::cpu_features::is_enabled_neon();
+    return crate::cpu_features::is_enabled_neon();
     #[cfg(all(target_arch = "loongarch64", feature = "lsx"))]
-    return crate::zlib::cpu_features::is_enabled_lsx();
+    return crate::cpu_features::is_enabled_lsx();
     #[cfg(target_arch = "wasm32")]
-    return crate::zlib::cpu_features::is_enabled_simd128();
+    return crate::cpu_features::is_enabled_simd128();
     #[allow(unreachable_code)]
     false
 }
@@ -89,22 +89,22 @@ fn compare256(src0: &[u8; 256], src1: &[u8; 256]) -> usize {
     }
 
     #[cfg(target_arch = "x86_64")]
-    if crate::zlib::cpu_features::is_enabled_avx2_and_bmi2() {
+    if crate::cpu_features::is_enabled_avx2_and_bmi2() {
         return unsafe { avx2::compare256(src0, src1) };
     }
 
     #[cfg(target_arch = "aarch64")]
-    if crate::zlib::cpu_features::is_enabled_neon() {
+    if crate::cpu_features::is_enabled_neon() {
         return unsafe { neon::compare256(src0, src1) };
     }
 
     #[cfg(all(target_arch = "loongarch64", feature = "lsx"))]
-    if crate::zlib::cpu_features::is_enabled_lsx() {
+    if crate::cpu_features::is_enabled_lsx() {
         return unsafe { lsx::compare256(src0, src1) };
     }
 
     #[cfg(target_arch = "wasm32")]
-    if crate::zlib::cpu_features::is_enabled_simd128() {
+    if crate::cpu_features::is_enabled_simd128() {
         return wasm32::compare256(src0, src1);
     }
 
@@ -278,7 +278,7 @@ mod neon {
 
     #[test]
     fn test_compare256() {
-        if crate::zlib::cpu_features::is_enabled_neon() {
+        if crate::cpu_features::is_enabled_neon() {
             let str1 = [b'a'; super::MAX_COMPARE_SIZE];
             let mut str2 = [b'a'; super::MAX_COMPARE_SIZE];
 
@@ -338,7 +338,7 @@ mod avx2 {
 
     #[test]
     fn test_compare256() {
-        if crate::zlib::cpu_features::is_enabled_avx2_and_bmi2() {
+        if crate::cpu_features::is_enabled_avx2_and_bmi2() {
             let str1 = [b'a'; super::MAX_COMPARE_SIZE];
             let mut str2 = [b'a'; super::MAX_COMPARE_SIZE];
 
@@ -478,7 +478,7 @@ mod lsx {
 
     #[test]
     fn test_compare256() {
-        if crate::zlib::cpu_features::is_enabled_lsx() {
+        if crate::cpu_features::is_enabled_lsx() {
             let str1 = [b'a'; super::MAX_COMPARE_SIZE];
             let mut str2 = [b'a'; super::MAX_COMPARE_SIZE];
 
@@ -526,7 +526,7 @@ mod wasm32 {
 
     #[test]
     fn test_compare256() {
-        if crate::zlib::cpu_features::is_enabled_simd128() {
+        if crate::cpu_features::is_enabled_simd128() {
             let str1 = [b'a'; super::MAX_COMPARE_SIZE];
             let mut str2 = [b'a'; super::MAX_COMPARE_SIZE];
 

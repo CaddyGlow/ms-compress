@@ -1,3 +1,5 @@
+#![cfg(feature = "zstd")]
+
 use ms_compress::zstd::decoding::{BlockDecodingStrategy, Dictionary, FrameDecoder};
 use ms_compress::zstd::io::Read;
 fn payload() -> Vec<u8> {

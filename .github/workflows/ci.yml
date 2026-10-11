@@ -32,12 +32,20 @@ jobs:
             ms-compress/fuzz -> target
       - run: cargo fmt -p ms-compress -- --check
       - run: cargo test -p ms-compress --all-features --locked
-      - run: cargo test -p ms-compress --no-default-features --features avx512,lsx,lzma-optimization --locked
+      - run: cargo test -p ms-compress --no-default-features --features all-codecs,avx512,lsx,lzma-optimization --locked
       - run: cargo clippy -p ms-compress --all-targets --all-features --locked -- -D warnings
-      - run: cargo clippy -p ms-compress --all-targets --no-default-features --features avx512,lsx,lzma-optimization --locked -- -D warnings
+      - run: cargo clippy -p ms-compress --all-targets --no-default-features --features all-codecs,avx512,lsx,lzma-optimization --locked -- -D warnings
       - run: cargo test --no-default-features --locked
+      - run: cargo test --no-default-features --features all-codecs --locked
       - name: LZMA safe implementation
-        run: cargo test -p ms-compress --no-default-features --locked --test lzma
+        run: cargo test -p ms-compress --no-default-features --features lzma --locked --test lzma
+      - name: Selective codec features
+        run: |
+          for feature in std lznt1 xpress lzx lzms quantum deflate lzma zstd microsoft-codecs cli; do
+            cargo clippy --all-targets --no-default-features --features "$feature" --locked -- -D warnings
+            cargo test --no-default-features --features "$feature" --locked
+            cargo clippy --all-targets --no-default-features --features "std,$feature" --locked -- -D warnings
+          done
       - name: Native CPU optimized tests
         if: runner.os == 'Linux'
         env:
@@ -78,7 +86,13 @@ jobs:
           workspaces: |
             ms-compress -> target
             ms-compress/fuzz -> target
-      - run: cargo check -p ms-compress --lib --no-default-features --features avx512,lsx,lzma-optimization --target thumbv7em-none-eabi --locked
+      - run: cargo check -p ms-compress --lib --no-default-features --target thumbv7em-none-eabi --locked
+      - run: cargo check -p ms-compress --lib --no-default-features --features all-codecs,avx512,lsx,lzma-optimization --target thumbv7em-none-eabi --locked
+      - name: Individual embedded codecs
+        run: |
+          for feature in lznt1 xpress lzx lzms quantum deflate lzma zstd; do
+            cargo check --lib --no-default-features --features "$feature" --target thumbv7em-none-eabi --locked
+          done
 
 
   windows:
@@ -97,4 +111,5 @@ jobs:
             ms-compress/fuzz -> target
       - run: cargo test --all-features --locked
       - run: cargo test --no-default-features --locked
+      - run: cargo test --no-default-features --features all-codecs --locked
       - run: cargo test --locked --test nt_buffers_windows -- --ignored

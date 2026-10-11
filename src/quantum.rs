@@ -482,7 +482,7 @@ impl QuantumEncoder {
                     && position - candidate <= self.window
                     && visits < (4usize << self.level)
                 {
-                    let found = crate::zlib::common_prefix(
+                    let found = crate::match_compare::common_prefix(
                         &data[candidate..candidate + limit],
                         &data[position..position + limit],
                     );

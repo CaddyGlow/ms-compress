@@ -1,3 +1,5 @@
+#![cfg(feature = "deflate")]
+
 use ms_compress::zlib::{
     Deflate, DeflateConfig, DeflateFlush, Inflate, InflateConfig, InflateError, InflateFlush,
     ReturnCode, Status,

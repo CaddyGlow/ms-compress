@@ -1,3 +1,5 @@
+#![cfg(all(feature = "xpress", feature = "lzx", feature = "lzms"))]
+
 use ms_compress::context::Decompressor;
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::cell::Cell;

@@ -51,6 +51,7 @@ impl<'a> Reader<'a> {
         let b = self.take(2)?;
         Ok(u16::from_le_bytes([b[0], b[1]]))
     }
+    #[cfg(feature = "xpress")]
     pub(crate) fn dword(&mut self) -> Result<u32, Error> {
         let b = self.take(4)?;
         Ok(u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
@@ -113,7 +114,7 @@ impl Matcher {
             return (0, 0);
         }
         let limit = maximum.min(input.len() - pos);
-        let length = crate::zlib::common_prefix(
+        let length = crate::match_compare::common_prefix(
             &input[previous..previous + limit],
             &input[pos..pos + limit],
         );

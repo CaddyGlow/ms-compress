@@ -1,3 +1,5 @@
+#![cfg(feature = "lzma")]
+
 use ms_compress::lzma::{self, Action, LzmaReader, LzmaStream, Read, Status};
 
 const PLAIN: &[u8] = b"Hello, world!";
