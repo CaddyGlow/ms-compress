@@ -50,7 +50,9 @@ jobs:
         if: runner.os == 'Linux'
         env:
           RUSTFLAGS: '-C target-cpu=native'
-        run: cargo test -p ms-compress --all-features --locked --lib
+        # Hosted runners can have different CPUs; never restore native dependencies
+        # compiled on another runner from the shared portable build cache.
+        run: cargo test -p ms-compress --all-features --locked --lib --target-dir "$RUNNER_TEMP/ms-compress-native"
       - name: LZMA reference interoperability
         if: runner.os == 'Linux'
         run: cargo test -p ms-compress --all-features --locked --test lzma -- --ignored
