@@ -1,8 +1,8 @@
 [package]
 name = "ms-compress"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
-rust-version = "1.99"
+rust-version = "1.96"
 license = "LGPL-2.1-only AND LGPL-2.1-or-later AND Zlib AND Apache-2.0 AND MIT"
 description = "Native Rust Microsoft compression codecs: LZNT1, XPRESS, LZX, LZMS, Quantum, DEFLATE, and LZMA"
 repository = "https://github.com/CaddyGlow/ms-compress"
@@ -12,9 +12,18 @@ keywords = ["compression", "lznt1", "xpress", "lzx", "lzms"]
 categories = ["compression", "no-std"]
 # Full independent-oracle corpora remain in Git and run in CI, outside the registry package.
 exclude = [
-    "tests/differential.rs", "tests/lzms_differential.rs", "tests/lzx_differential.rs",
-    "tests/fixtures/xpress-oracle.wxp", "tests/fixtures/lzms-oracle.wlm", "tests/fixtures/lzx-oracle.bin",
-    "tests/fixtures/*-libfuzzer", "fuzz/**", "benches/zlib-comparison/**", "docs/**", ".github/**", "scripts/**",
+  "tests/differential.rs",
+  "tests/lzms_differential.rs",
+  "tests/lzx_differential.rs",
+  "tests/fixtures/xpress-oracle.wxp",
+  "tests/fixtures/lzms-oracle.wlm",
+  "tests/fixtures/lzx-oracle.bin",
+  "tests/fixtures/*-libfuzzer",
+  "fuzz/**",
+  "benches/zlib-comparison/**",
+  "docs/**",
+  ".github/**",
+  "scripts/**",
 ]
 
 [features]
@@ -22,22 +31,24 @@ default = ["std", "all-codecs", "lzma-optimization"]
 all-codecs = ["microsoft-codecs", "deflate", "lzma", "zstd"]
 microsoft-codecs = ["lznt1", "xpress", "lzx", "lzms", "quantum"]
 lznt1 = []
-xpress = [] # Plain XPRESS and XPRESS Huffman (Windows and WIM).
-lzx = [] # WIM LZX, CAB LZX, and LZX Delta.
+xpress = []                                                      # Plain XPRESS and XPRESS Huffman (Windows and WIM).
+lzx = []                                                         # WIM LZX, CAB LZX, and LZX Delta.
 lzms = []
 quantum = []
-deflate = [] # DEFLATE, zlib, gzip, CRC32, and Adler32.
-lzma = [] # LZMA1 and raw LZMA2.
+deflate = []                                                     # DEFLATE, zlib, gzip, CRC32, and Adler32.
+lzma = []                                                        # LZMA1 and raw LZMA2.
 zstd = ["dep:ruzstd"]
 std = ["ruzstd?/std"]
-lzma-optimization = ["lzma"] # Optimized LZMA internals; works with no_std.
-vpclmulqdq = [] # AVX-512 CRC32 acceleration; stable since Rust 1.89.
-avx512 = ["vpclmulqdq"] # AVX-512 checksum acceleration; stable since Rust 1.89.
-lsx = [] # LoongArch LSX acceleration; intrinsics require nightly Rust.
+lzma-optimization = ["lzma"]                                     # Optimized LZMA internals; works with no_std.
+vpclmulqdq = []                                                  # AVX-512 CRC32 acceleration; stable since Rust 1.89.
+avx512 = ["vpclmulqdq"]                                          # AVX-512 checksum acceleration; stable since Rust 1.89.
+lsx = []                                                         # LoongArch LSX acceleration; intrinsics require nightly Rust.
 cli = ["std", "lznt1", "xpress", "dep:clap", "dep:tempfile"]
 
 [dependencies]
-ruzstd = { package = "ms-compress-ruzstd", version = "=0.9.1", optional = true, default-features = false, features = ["hash"] }
+ruzstd = { package = "ms-compress-ruzstd", version = "=0.9.1", optional = true, default-features = false, features = [
+  "hash",
+] }
 clap = { version = "4.5", features = ["derive"], optional = true }
 tempfile = { version = "3.23", optional = true }
 
@@ -58,7 +69,15 @@ unsafe_op_in_unsafe_fn = "deny"
 [[bench]]
 name = "codecs"
 harness = false
-required-features = ["lznt1", "xpress", "lzx", "lzms", "quantum", "deflate", "lzma"]
+required-features = [
+  "lznt1",
+  "xpress",
+  "lzx",
+  "lzms",
+  "quantum",
+  "deflate",
+  "lzma",
+]
 
 [[bench]]
 name = "rtl_codecs"

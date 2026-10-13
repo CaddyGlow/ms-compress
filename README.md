@@ -1,12 +1,11 @@
 # ms-compress
 
-Pure Rust Microsoft compression codecs shared by WIM, CAB, Windows buffer,
-and delta consumers, with DEFLATE, zlib, gzip, LZMA1, LZMA2, and Zstandard support. The Microsoft codecs
-deny unsafe code; upstream SIMD and allocation code is confined to the vendored
-`zlib` and `lzma` sources, including shared SIMD helpers. Its library uses `core`
-and `alloc` directly. The optional `zstd` feature uses the patched
-`ms-compress-ruzstd` crate pinned to version 0.9.1.
-Licenses and codec attribution notices are retained alongside the implementation.
+Pure Rust Microsoft compression codecs shared by WIM, CAB, Windows buffer, and delta consumers, with
+DEFLATE, zlib, gzip, LZMA1, LZMA2, and Zstandard support. The Microsoft codecs deny unsafe code;
+upstream SIMD and allocation code is confined to the vendored `zlib` and `lzma` sources, including
+shared SIMD helpers. Its library uses `core` and `alloc` directly. The optional `zstd` feature uses
+the patched `ms-compress-ruzstd` crate pinned to version 0.9.1. Licenses and codec attribution
+notices are retained alongside the implementation.
 
 Select the API for the encoded format:
 
@@ -196,7 +195,8 @@ builds already detect these codec instructions at runtime; extra Cargo features
 are unnecessary for AVX2, BMI, SSE, and PCLMUL. AVX-VNNI, AES, and SHA do not have
 additional dedicated codec implementations in this module.
 
-Compiler flag reference: [rustc CPU and target features](https://doc.rust-lang.org/rustc/codegen-options/index.html#target-cpu).
+Compiler flag reference:
+[rustc CPU and target features](https://doc.rust-lang.org/rustc/codegen-options/index.html#target-cpu).
 
 See [zlib provenance](src/zlib/NOTICE.md) for the upstream revision and changes.
 

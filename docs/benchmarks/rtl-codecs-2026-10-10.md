@@ -1,16 +1,24 @@
 # Native RTL codec benchmark, 2026-10-10
 
-Windows 11 Pro (OS 10.0.26200, ntdll 10.0.26100.7920), QEMU/KVM guest with four vCPUs on an Intel Core i7-13700K. Rust 1.99.0, portable x86_64-pc-windows-msvc release build, default features, thin LTO. No CPU affinity or frequency pinning; results describe this VM run.
+Windows 11 Pro (OS 10.0.26200, ntdll 10.0.26100.7920), QEMU/KVM guest with four vCPUs on an Intel
+Core i7-13700K. Rust 1.99.0, portable x86_64-pc-windows-msvc release build, default features, thin
+LTO. No CPU affinity or frequency pinning; results describe this VM run.
 
-Five 100 ms samples per case, alternating Rust/RTL order. All 1,260 rows completed; every available Rust/native compressed stream was validated by both decoders before timing. Native formats use the standard compression engine and a 4 KiB chunk-size argument.
+Five 100 ms samples per case, alternating Rust/RTL order. All 1,260 rows completed; every available
+Rust/native compressed stream was validated by both decoders before timing. Native formats use the
+standard compression engine and a 4 KiB chunk-size argument.
 
-Compression timings include allocation and workspace construction. Decompression reuses output and native workspace. Rust Huffman compression stops at 64 KiB; larger buffers have native compression and paired decoding results. Compare decoder rows with matching `source`, size, and dataset.
+Compression timings include allocation and workspace construction. Decompression reuses output and
+native workspace. Rust Huffman compression stops at 64 KiB; larger buffers have native compression
+and paired decoding results. Compare decoder rows with matching `source`, size, and dataset.
 
-Raw measurements: [CSV](rtl-codecs-2026-10-10.csv). See `benches/rtl_codecs.rs` and the root validation guide for reproduction.
+Raw measurements: [CSV](rtl-codecs-2026-10-10.csv). See `benches/rtl_codecs.rs` and the root
+validation guide for reproduction.
 
 ## Compression at 32 KiB
 
-Median MiB/s; higher is faster. Output bytes are shown separately because the encoders can choose different representations.
+Median MiB/s; higher is faster. Output bytes are shown separately because the encoders can choose
+different representations.
 
 | Format | Dataset | Rust MiB/s | RTL MiB/s | RTL / Rust | Rust bytes | RTL bytes |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |

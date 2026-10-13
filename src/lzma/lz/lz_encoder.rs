@@ -190,7 +190,7 @@ impl LzEncoder {
     pub(crate) fn normalize(positions: &mut [i32], norm_offset: i32) {
         #[cfg(all(feature = "lzma-optimization", target_arch = "x86_64"))]
         {
-            if crate::zlib::cpu_features::is_enabled_avx2_and_bmi2() {
+            if crate::cpu_features::is_enabled_avx2_and_bmi2() {
                 // SAFETY: We've checked that the CPU supports AVX2.
                 return unsafe { normalize_avx2(positions, norm_offset) };
             }
@@ -202,7 +202,7 @@ impl LzEncoder {
 
         #[cfg(all(feature = "lzma-optimization", target_arch = "aarch64"))]
         {
-            if crate::zlib::cpu_features::is_enabled_neon() {
+            if crate::cpu_features::is_enabled_neon() {
                 // SAFETY: We've checked that the CPU supports NEON.
                 return unsafe { normalize_neon(positions, norm_offset) };
             }

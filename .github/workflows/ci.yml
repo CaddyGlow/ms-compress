@@ -41,7 +41,7 @@ jobs:
         run: cargo test -p ms-compress --no-default-features --features lzma --locked --test lzma
       - name: Selective codec features
         run: |
-          for feature in std lznt1 xpress lzx lzms quantum deflate lzma zstd microsoft-codecs cli; do
+          for feature in std lznt1 xpress lzx lzms quantum deflate lzma lzma-optimization zstd microsoft-codecs cli; do
             cargo clippy --all-targets --no-default-features --features "$feature" --locked -- -D warnings
             cargo test --no-default-features --features "$feature" --locked
             cargo clippy --all-targets --no-default-features --features "std,$feature" --locked -- -D warnings
@@ -92,7 +92,7 @@ jobs:
       - run: cargo check -p ms-compress --lib --no-default-features --features all-codecs,avx512,lsx,lzma-optimization --target thumbv7em-none-eabi --locked
       - name: Individual embedded codecs
         run: |
-          for feature in lznt1 xpress lzx lzms quantum deflate lzma zstd; do
+          for feature in lznt1 xpress lzx lzms quantum deflate lzma lzma-optimization zstd; do
             cargo check --lib --no-default-features --features "$feature" --target thumbv7em-none-eabi --locked
           done
 

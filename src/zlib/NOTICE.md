@@ -1,6 +1,7 @@
 # Vendored zlib-rs
 
-Source: https://github.com/trifectatechfoundation/zlib-rs/tree/7909c0fc48f5d29f6610770e31d6f0c924f9ec3b/zlib-rs
+Source:
+<https://github.com/trifectatechfoundation/zlib-rs/tree/7909c0fc48f5d29f6610770e31d6f0c924f9ec3b/zlib-rs>
 
 Upstream version: 0.6.8. Copyright 2024 Trifecta Tech Foundation.
 The original Zlib license is retained in LICENSE. This copy is modified.

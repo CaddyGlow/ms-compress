@@ -56,7 +56,6 @@ strict all-target/all-feature Clippy, no-default-feature tests, embedded library
 compilation for thumbv7em-none-eabi, and the fuzz regression test suite, all with
 locked dependencies. Native Windows interoperability was not run for this switch.
 
-
 The crate has format-specific regression tests for XPRESS Huffman, LZX, CAB LZX,
 LZX Delta, LZMS, Quantum, LZNT1, and plain XPRESS, plus context-reuse and allocator
 failure tests. Checked-in independent fixtures exercise XPRESS/LZX/LZMS decoding,
@@ -123,7 +122,6 @@ all four decoders. It has its own locked dependencies and a Linux CI smoke gate.
 See its README for allocation costs, memory-level differences, and commands.
 The [2026-10-10 comparison](docs/benchmarks/zlib-comparison-2026-10-10.md)
 records the environment, summary tables, and all 1,620 measurement rows.
-
 
 ```sh
 cargo bench -p ms-compress --bench codecs --locked > target/ms-compress-bench.csv

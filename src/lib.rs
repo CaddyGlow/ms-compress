@@ -23,7 +23,8 @@ extern crate alloc;
     feature = "lzx",
     feature = "lzms",
     feature = "quantum",
-    feature = "deflate"
+    feature = "deflate",
+    feature = "lzma-optimization"
 ))]
 #[path = "zlib/cpu_features.rs"]
 #[allow(missing_docs)]

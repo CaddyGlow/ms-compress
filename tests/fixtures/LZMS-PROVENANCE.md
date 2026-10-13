@@ -52,7 +52,8 @@ Source hashes (SHA-256):
 - `src/lzms_decompress.c`: `c2b521c787101cff8102341c1407517e8ac83401b5c2bd8050068fe9b754c00e`
 - `src/lzms_common.c`: `4c33aad108d2ec5f50323a3a5c82028ff339476081e7c098ed2ee2b1f21c7a24`
 - `src/compress_common.c`: `a588cccd434c0b7c3849601502b45c6b0a5034315b6e08809fb3272cde51ddae`
-- `include/wimlib/lzms_constants.h`: `2cf96fe8040f80f75ca61c65294861aafd38cf40f18ef8082c8d6b59fdd74ed6`
+- `include/wimlib/lzms_constants.h`:
+  `2cf96fe8040f80f75ca61c65294861aafd38cf40f18ef8082c8d6b59fdd74ed6`
 - Original oracle `libwim.so`: `62eb9c97f9ec6e3dae6c7e995b0a65a2e94a4d9b41491666947ba788a15bb74a`
 
 These are raw-codec gates. They do not establish native encoder parity,

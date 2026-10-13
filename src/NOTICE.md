@@ -4,6 +4,7 @@ This crate is LGPL-2.1-or-later. See LICENSE-LGPL-2.1. The implementation is
 native safe Rust and does not link or invoke the upstream C decoder.
 
 Behavioral reference: wimlib cd5e231c348c255ae5088873b5a66ee0eb96fa07:
+
 - src/xpress_decompress.c: Copyright (C) 2012-2016 Eric Biggers,
   LGPL-2.1-or-later.
 - include/wimlib/xpress_constants.h: format constants.
@@ -33,4 +34,3 @@ HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
 WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
-

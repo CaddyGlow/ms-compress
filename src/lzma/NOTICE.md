@@ -1,6 +1,6 @@
 # Vendored lzma-rust2
 
-Source: https://github.com/hasenbanck/lzma-rust2/tree/8fdb428469c3a11564583941f4621883c2f242f4
+Source: <https://github.com/hasenbanck/lzma-rust2/tree/8fdb428469c3a11564583941f4621883c2f242f4>
 
 Upstream version: 0.21.0. License: Apache-2.0, retained in LICENSE.
 Upstream describes this as a port of Tukaani XZ for Java and a maintained fork
